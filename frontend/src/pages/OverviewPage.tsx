@@ -17,6 +17,7 @@ import {
   getAssignments,
   getAttendanceOverview,
   getExams,
+  getSemesters,
 } from '../services/api.ts'
 import type {
   AcademicInsight,
@@ -49,6 +50,7 @@ export function OverviewPage() {
   const [upcomingExams, setUpcomingExams] = useState<Exam[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [insights, setInsights] = useState<AcademicInsight[]>([])
+  const [hasSemesterSetup, setHasSemesterSetup] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,8 +62,9 @@ export function OverviewPage() {
       getExams({ upcoming: true }),
       getAssignments(),
       getAnalyticsInsights(),
+      getSemesters(),
     ])
-      .then(([nextAcademic, nextAttendance, nextExams, nextAssignments, nextInsights]) => {
+      .then(([nextAcademic, nextAttendance, nextExams, nextAssignments, nextInsights, nextSemesters]) => {
         if (!active) {
           return
         }
@@ -70,6 +73,7 @@ export function OverviewPage() {
         setUpcomingExams(nextExams.slice(0, 4))
         setAssignments(nextAssignments)
         setInsights(nextInsights.insights.slice(0, 3))
+        setHasSemesterSetup(nextSemesters.length > 0)
       })
       .catch((caught: unknown) => {
         if (active) {
@@ -112,6 +116,16 @@ export function OverviewPage() {
         <p className="text-sm text-[var(--cp-muted)]" role="status">
           Loading dashboard
         </p>
+      ) : null}
+
+      {!loading && hasSemesterSetup === false ? (
+        <Card className="flex flex-wrap items-center justify-between gap-4 border-[var(--cp-brand)]/20 bg-blue-50/40">
+          <div>
+            <CardTitle>Set up your academic profile</CardTitle>
+            <p className="mt-1 text-sm text-[var(--cp-muted)]">Choose your current semester and optionally add previous course results to build your academic history.</p>
+          </div>
+          <Button onClick={() => navigate('/semesters')}>Set up semesters</Button>
+        </Card>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

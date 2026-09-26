@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.db.session import commit_or_conflict
 from app.models.enrollment import Enrollment
+from app.models.semester import Semester
 from app.schemas.enrollment import EnrollmentCreate, EnrollmentUpdate
 from app.services import course_service
 
@@ -33,6 +34,9 @@ def create_enrollment(db: Session, student_id: int, data: EnrollmentCreate) -> E
         course_id=data.course_id,
         status=data.status,
         semester=data.semester,
+        semester_id=db.scalar(
+            select(Semester.id).where(Semester.student_id == student_id, Semester.is_current.is_(True))
+        ),
     )
     db.add(enrollment)
     commit_or_conflict(db, "You are already enrolled in this course.")

@@ -4,6 +4,7 @@ import {
   AttendanceBarChart,
   CourseScoreBarChart,
   GradeDonutChart,
+  GpaHistoryLineChart,
   PerformanceLineChart,
 } from '../components/charts/AnalyticsCharts.tsx'
 import { Alert } from '../components/ui/Alert.tsx'
@@ -17,6 +18,7 @@ import {
   getAnalyticsAttendance,
   getAnalyticsCourses,
   getAnalyticsInsights,
+  getAnalyticsIntelligence,
   getAnalyticsOverview,
   getAnalyticsPerformance,
   simulateGpa,
@@ -24,6 +26,7 @@ import {
 import { ApiError } from '../services/http.ts'
 import type {
   AnalyticsOverview,
+  AcademicIntelligence,
   AttendanceAnalytics,
   CourseAnalytics,
   GpaSimulationResponse,
@@ -70,6 +73,11 @@ export function AnalyticsPage() {
   const [performance, setPerformance] = useState<PerformanceTrend | null>(null)
   const [attendance, setAttendance] = useState<AttendanceAnalytics | null>(null)
   const [insights, setInsights] = useState<InsightsResponse | null>(null)
+  const [intelligence, setIntelligence] = useState<AcademicIntelligence | null>(null)
+  const [firstSemesterId, setFirstSemesterId] = useState('')
+  const [secondSemesterId, setSecondSemesterId] = useState('')
+  const [comparing, setComparing] = useState(false)
+  const [comparisonError, setComparisonError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -82,19 +90,21 @@ export function AnalyticsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [nextOverview, nextCourses, nextPerformance, nextAttendance, nextInsights] =
+      const [nextOverview, nextCourses, nextPerformance, nextAttendance, nextInsights, nextIntelligence] =
         await Promise.all([
           getAnalyticsOverview(),
           getAnalyticsCourses(),
           getAnalyticsPerformance(),
           getAnalyticsAttendance(),
           getAnalyticsInsights(),
+          getAnalyticsIntelligence(),
         ])
       setOverview(nextOverview)
       setCourses(nextCourses)
       setPerformance(nextPerformance)
       setAttendance(nextAttendance)
       setInsights(nextInsights)
+      setIntelligence(nextIntelligence)
       setHypoGrades((prev) => {
         const next = { ...prev }
         for (const course of nextCourses) {
@@ -110,6 +120,25 @@ export function AnalyticsPage() {
       setLoading(false)
     }
   }, [])
+
+  async function handleSemesterCompare() {
+    if (!firstSemesterId || !secondSemesterId || firstSemesterId === secondSemesterId) {
+      setComparisonError('Choose two different semesters to compare.')
+      return
+    }
+    setComparisonError(null)
+    setComparing(true)
+    try {
+      setIntelligence(await getAnalyticsIntelligence({
+        first_semester_id: Number(firstSemesterId),
+        second_semester_id: Number(secondSemesterId),
+      }))
+    } catch (caught) {
+      setComparisonError(caught instanceof Error ? caught.message : 'Could not compare semesters.')
+    } finally {
+      setComparing(false)
+    }
+  }
 
   useEffect(() => {
     void load()
@@ -242,6 +271,134 @@ export function AnalyticsPage() {
               title="Not enough academic data yet"
               message={overview.message ?? 'Enroll in courses and add marks to unlock analytics.'}
             />
+          ) : null}
+
+          {intelligence ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <Card>
+                  <CardTitle>Current SGPA</CardTitle>
+                  <p className="mt-4 text-2xl font-semibold">{metric(intelligence.current_sgpa)}</p>
+                  <p className="mt-2 text-sm text-[var(--cp-muted)]">
+                    Previous SGPA {metric(intelligence.previous_sgpa)}
+                    {intelligence.sgpa_change !== null ? ` · ${intelligence.sgpa_change > 0 ? '+' : ''}${intelligence.sgpa_change}` : ''}
+                  </p>
+                </Card>
+                <Card>
+                  <CardTitle>Average recorded marks</CardTitle>
+                  <p className="mt-4 text-2xl font-semibold">{metric(intelligence.average_marks, '%')}</p>
+                  <p className="mt-2 text-sm text-[var(--cp-muted)]">Available course final scores only</p>
+                </Card>
+                <Card>
+                  <CardTitle>Completed credits</CardTitle>
+                  <p className="mt-4 text-2xl font-semibold">{intelligence.completed_credits}</p>
+                  <p className="mt-2 text-sm text-[var(--cp-muted)]">
+                    {intelligence.current_semester_credits} known in current semester · {intelligence.total_known_credits} total known
+                  </p>
+                </Card>
+                <Card>
+                  <CardTitle>Course progress</CardTitle>
+                  <p className="mt-4 text-2xl font-semibold">
+                    {intelligence.completed_courses} complete · {intelligence.ongoing_courses} ongoing
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--cp-muted)]">
+                    Attendance threshold {intelligence.attendance_warning_threshold}%
+                  </p>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <Card className="space-y-3">
+                  <div>
+                    <CardTitle>Semester performance and credit trend</CardTitle>
+                    <p className="mt-1 text-sm text-[var(--cp-muted)]">
+                      Semester GPAs and cumulative progression use completed-course credits.
+                    </p>
+                  </div>
+                  {intelligence.semester_trend.some((item) => item.sgpa !== null) ? (
+                    <>
+                      <GpaHistoryLineChart data={intelligence.semester_trend
+                        .filter((item) => item.sgpa !== null)
+                        .map((item) => ({ semester: `Sem ${item.semester_number}`, gpa: item.sgpa as number }))} />
+                      <ul className="space-y-2 text-sm">
+                        {intelligence.semester_trend.map((item) => (
+                          <li key={item.semester_id} className="flex justify-between gap-3 border-t border-[var(--cp-border)] pt-2">
+                            <span>Semester {item.semester_number} · {item.course_count} courses · {item.completed_credits}/{item.known_credits} credits</span>
+                            <span>SGPA {metric(item.sgpa)} · CGPA {metric(item.cumulative_gpa)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <EmptyState title="Semester trend unavailable" message={intelligence.message ?? 'Add completed semester data to view GPA progression.'} />
+                  )}
+                </Card>
+                <Card className="space-y-4">
+                  <div>
+                    <CardTitle>Compare semesters</CardTitle>
+                    <p className="mt-1 text-sm text-[var(--cp-muted)]">Differences are second semester minus first semester.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <SelectField label="First semester" name="compare-first" value={firstSemesterId} onChange={(event) => setFirstSemesterId(event.target.value)}>
+                      <option value="">Choose semester</option>
+                      {intelligence.semester_trend.map((item) => <option key={item.semester_id} value={item.semester_id}>Semester {item.semester_number}</option>)}
+                    </SelectField>
+                    <SelectField label="Second semester" name="compare-second" value={secondSemesterId} onChange={(event) => setSecondSemesterId(event.target.value)}>
+                      <option value="">Choose semester</option>
+                      {intelligence.semester_trend.map((item) => <option key={item.semester_id} value={item.semester_id}>Semester {item.semester_number}</option>)}
+                    </SelectField>
+                  </div>
+                  <Button onClick={() => void handleSemesterCompare()} disabled={comparing || intelligence.semester_trend.length < 2}>
+                    {comparing ? 'Comparing' : 'Compare semesters'}
+                  </Button>
+                  {comparisonError ? <Alert>{comparisonError}</Alert> : null}
+                  {intelligence.comparison ? (
+                    <div className="space-y-2 rounded-xl border border-[var(--cp-border)] p-4 text-sm">
+                      <p>SGPA change: <strong>{metric(intelligence.comparison.sgpa_difference)}</strong></p>
+                      <p>Average marks change: <strong>{metric(intelligence.comparison.average_marks_difference, ' pp')}</strong></p>
+                      <p>Known credits change: <strong>{intelligence.comparison.credits_difference > 0 ? '+' : ''}{intelligence.comparison.credits_difference}</strong></p>
+                      <p>Course count change: <strong>{intelligence.comparison.course_count_difference > 0 ? '+' : ''}{intelligence.comparison.course_count_difference}</strong></p>
+                      <p className="text-[var(--cp-muted)]">{intelligence.comparison.attendance_note}</p>
+                    </div>
+                  ) : null}
+                </Card>
+              </div>
+
+              <Card className="space-y-4">
+                <div>
+                  <CardTitle>Subject performance intelligence</CardTitle>
+                  <p className="mt-1 text-sm text-[var(--cp-muted)]">
+                    Score categories use configured thresholds ({intelligence.low_score_threshold}% attention, {intelligence.strong_score_threshold}% strong). Attendance is course-wide where recorded.
+                  </p>
+                </div>
+                {intelligence.courses.length ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead><tr className="border-b border-[var(--cp-border)] text-[var(--cp-muted)]"><th className="py-2">Semester / course</th><th>Score</th><th>Grade / GP</th><th>Credits</th><th>Attendance</th><th>CAT 1 → CAT 2</th><th>Status</th></tr></thead>
+                      <tbody>{intelligence.courses.map((item, index) => (
+                        <tr key={`${item.semester_id ?? 'legacy'}-${item.course_id ?? item.course_code}-${index}`} className="border-b border-[var(--cp-border)]">
+                          <td className="py-3">{item.semester_number ? `Sem ${item.semester_number} · ` : ''}{item.course_code ?? item.course_name}<span className="block text-xs text-[var(--cp-muted)]">{item.course_name}</span></td>
+                          <td>{metric(item.score, '%')}</td><td>{item.grade ?? '—'} / {metric(item.grade_point)}</td><td>{item.credits}</td>
+                          <td>{metric(item.attendance_percentage, '%')}<span className="block text-xs text-[var(--cp-muted)]">{item.attendance_health}</span></td>
+                          <td>{metric(item.cat1_to_cat2_change, ' pp')}</td><td><Badge tone={item.performance_category === 'STRONG' ? 'success' : item.performance_category === 'NEEDS_ATTENTION' ? 'danger' : 'neutral'}>{item.performance_category.replaceAll('_', ' ')}</Badge></td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                ) : <EmptyState title="No course records" message="Add semester history or enroll in courses and record marks." />}
+              </Card>
+
+              <Card className="space-y-3">
+                <div><CardTitle>Academic intelligence insights</CardTitle><p className="mt-1 text-sm text-[var(--cp-muted)]">Deterministic observations with the source metric shown.</p></div>
+                {intelligence.insights.length ? <ul className="space-y-3">{intelligence.insights.map((item, index) => (
+                  <li key={`${item.type}-${index}`} className="rounded-xl border border-[var(--cp-border)] px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.title}</strong><Badge tone={severityTone(item.severity)}>{item.severity}</Badge></div>
+                    <p className="mt-1 text-sm text-[var(--cp-muted)]">{item.description}</p>
+                    <p className="mt-1 text-xs text-[var(--cp-muted)]">Source: {item.source_metric}</p>
+                  </li>
+                ))}</ul> : <EmptyState title="No insights yet" message={intelligence.message ?? 'Add more academic data to generate measurable observations.'} />}
+              </Card>
+            </>
           ) : null}
 
           <div className="grid gap-6 xl:grid-cols-2">

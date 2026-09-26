@@ -7,6 +7,7 @@ from app.models.document import Document, DocumentChunk
 from app.models.enrollment import Enrollment
 from app.models.exam import Exam
 from app.models.grading import AssessmentWeight, GradeBand, GradingScheme
+from app.models.semester import Semester, SemesterCourse
 from app.models.student import Student
 
 __all__ = [
@@ -23,5 +24,7 @@ __all__ = [
     "GradeBand",
     "GradingScheme",
     "Message",
+    "Semester",
+    "SemesterCourse",
     "Student",
 ]

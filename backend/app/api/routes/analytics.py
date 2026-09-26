@@ -10,12 +10,29 @@ from app.schemas.analytics import (
     CourseAnalytics,
     GpaSimulationRequest,
     GpaSimulationResponse,
+    AcademicIntelligence,
     InsightsResponse,
     PerformanceTrend,
 )
 from app.services import analytics_service
+from app.services import intelligence_service
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+@router.get("/intelligence", response_model=AcademicIntelligence)
+def academic_intelligence(
+    first_semester_id: int | None = None,
+    second_semester_id: int | None = None,
+    student: Student = Depends(get_current_student),
+    db: Session = Depends(get_db),
+) -> AcademicIntelligence:
+    return intelligence_service.get_academic_intelligence(
+        db,
+        student.id,
+        first_semester_id=first_semester_id,
+        second_semester_id=second_semester_id,
+    )
 
 
 @router.get("/overview", response_model=AnalyticsOverview)

@@ -7,6 +7,7 @@ import { Button } from './ui/Button.tsx'
 const titles: Record<string, string> = {
   '/': 'Dashboard',
   '/courses': 'Courses',
+  '/semesters': 'Semesters',
   '/marks': 'Marks',
   '/attendance': 'Attendance',
   '/exams': 'Exams',

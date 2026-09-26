@@ -17,6 +17,8 @@ def prepare_database() -> None:
     _ensure_column("courses", "grading_scheme_id", "INTEGER")
     _ensure_column("enrollments", "semester", "VARCHAR(64) NOT NULL DEFAULT 'Current'")
     _ensure_column("students", "role", "VARCHAR(16) NOT NULL DEFAULT 'STUDENT'")
+    _ensure_column("enrollments", "semester_id", "INTEGER REFERENCES semesters(id)")
+    _backfill_semesters()
     db = SessionLocal()
     try:
         grading_scheme_service.ensure_default_scheme(db)
@@ -34,6 +36,41 @@ def _ensure_column(table: str, column: str, ddl_type: str) -> None:
     with engine.connect() as connection:
         connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
         connection.commit()
+
+
+def _backfill_semesters() -> None:
+    """Preserve recognizable semester labels without guessing the student's current term."""
+    import re
+
+    from sqlalchemy import select
+
+    from app.models.enrollment import Enrollment
+    from app.models.semester import Semester
+    db = SessionLocal()
+    try:
+        changed = False
+        enrollments = list(db.scalars(select(Enrollment).where(Enrollment.semester_id.is_(None))).all())
+        for enrollment in enrollments:
+            match = re.fullmatch(r"\s*semester\s+(\d+)\s*", enrollment.semester, re.IGNORECASE)
+            if match is None:
+                continue
+            number = int(match.group(1))
+            semester = db.scalar(
+                select(Semester).where(
+                    Semester.student_id == enrollment.student_id,
+                    Semester.number == number,
+                )
+            )
+            if semester is None:
+                semester = Semester(student_id=enrollment.student_id, number=number, is_current=False)
+                db.add(semester)
+                db.flush()
+            enrollment.semester_id = semester.id
+            changed = True
+        if changed:
+            db.commit()
+    finally:
+        db.close()
 
 
 def _replace_empty_student_table(tables: set[str]) -> None:

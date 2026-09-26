@@ -1,5 +1,6 @@
 import type {
   AcademicSummary,
+  AcademicIntelligence,
   AnalyticsOverview,
   Assignment,
   AssignmentInput,
@@ -38,6 +39,10 @@ import type {
   PerformanceTrend,
   ProcessingStatus,
   Student,
+  Semester,
+  SemesterDetail,
+  SemesterCourse,
+  SemesterCourseInput,
 } from '../types/entities.ts'
 import { request } from './http.ts'
 
@@ -63,6 +68,57 @@ export function getCourses(): Promise<Course[]> {
 
 export function getEnrollments(): Promise<Enrollment[]> {
   return request<Enrollment[]>('/api/enrollments')
+}
+
+export function getSemesters(): Promise<Semester[]> {
+  return request<Semester[]>('/api/semesters')
+}
+
+export function setupSemesters(currentSemester: number): Promise<Semester[]> {
+  return request<Semester[]>('/api/semesters/setup', {
+    method: 'POST',
+    body: { current_semester: currentSemester },
+  })
+}
+
+export function createSemester(number: number, setCurrent = false): Promise<Semester> {
+  return request<Semester>('/api/semesters', {
+    method: 'POST',
+    body: { number, set_current: setCurrent },
+  })
+}
+
+export function setCurrentSemester(semesterId: number): Promise<Semester[]> {
+  return request<Semester[]>(`/api/semesters/${semesterId}/current`, { method: 'POST' })
+}
+
+export function getSemester(semesterId: number): Promise<SemesterDetail> {
+  return request<SemesterDetail>(`/api/semesters/${semesterId}`)
+}
+
+export function addSemesterCourseHistory(
+  semesterId: number,
+  course: SemesterCourseInput,
+): Promise<SemesterCourse[]> {
+  return request<SemesterCourse[]>(`/api/semesters/${semesterId}/courses`, {
+    method: 'POST',
+    body: { courses: [course] },
+  })
+}
+
+export function updateSemesterCourseHistory(
+  semesterId: number,
+  courseId: number,
+  input: SemesterCourseInput,
+): Promise<SemesterCourse> {
+  return request<SemesterCourse>(`/api/semesters/${semesterId}/courses/${courseId}`, {
+    method: 'PATCH',
+    body: input,
+  })
+}
+
+export function deleteSemesterCourseHistory(semesterId: number, courseId: number): Promise<void> {
+  return request<void>(`/api/semesters/${semesterId}/courses/${courseId}`, { method: 'DELETE' })
 }
 
 export function createEnrollment(courseId: number, semester = 'Current'): Promise<Enrollment> {
@@ -179,6 +235,13 @@ export function deleteAssignment(assignmentId: number): Promise<void> {
 
 export function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   return request<AnalyticsOverview>('/api/analytics/overview')
+}
+
+export function getAnalyticsIntelligence(params: {
+  first_semester_id?: number
+  second_semester_id?: number
+} = {}): Promise<AcademicIntelligence> {
+  return request<AcademicIntelligence>(`/api/analytics/intelligence${toQuery(params)}`)
 }
 
 export function getAnalyticsCourses(): Promise<CourseAnalytics[]> {

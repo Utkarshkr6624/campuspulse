@@ -23,3 +23,6 @@ class Student(TimestampMixin, Base):
     assignments: Mapped[list["Assignment"]] = relationship(back_populates="student")
     uploaded_documents: Mapped[list["Document"]] = relationship(back_populates="uploader")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="student")
+    semesters: Mapped[list["Semester"]] = relationship(
+        back_populates="student", cascade="all, delete-orphan", order_by="Semester.number"
+    )

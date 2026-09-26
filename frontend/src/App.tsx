@@ -18,6 +18,7 @@ import { OverviewPage } from './pages/OverviewPage.tsx'
 import { PlannerPage } from './pages/PlannerPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
 import { StudentsPage } from './pages/StudentsPage.tsx'
+import { SemestersPage } from './pages/SemestersPage.tsx'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route index element={<OverviewPage />} />
               <Route path="courses" element={<CoursesPage />} />
+              <Route path="semesters" element={<SemestersPage />} />
               <Route path="marks" element={<MarksPage />} />
               <Route path="attendance" element={<AttendancePage />} />
               <Route path="exams" element={<ExamsPage />} />

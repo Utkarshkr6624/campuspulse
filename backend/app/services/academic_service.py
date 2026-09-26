@@ -23,8 +23,10 @@ from app.services.academic import (
 )
 
 
-def list_course_performance(db: Session, student_id: int) -> list[CoursePerformance]:
-    enrollments = _active_enrollments(db, student_id)
+def list_course_performance(
+    db: Session, student_id: int, *, semester_id: int | None = None
+) -> list[CoursePerformance]:
+    enrollments = _active_enrollments(db, student_id, semester_id=semester_id)
     marks_by_course = _marks_by_course(db, student_id)
     results: list[CoursePerformance] = []
     for enrollment in enrollments:
@@ -50,6 +52,11 @@ def get_semester_gpa(db: Session, student_id: int, semester: str | None = None) 
 
 
 def get_cgpa(db: Session, student_id: int) -> GpaRead:
+    from app.models.semester import Semester
+    from app.services.semester_service import cumulative_gpa
+
+    if db.scalar(select(Semester.id).where(Semester.student_id == student_id)) is not None:
+        return cumulative_gpa(db, student_id)
     performances = list_course_performance(db, student_id)
     graded = [_to_graded_input(item) for item in performances]
     result = compute_cgpa(graded)
@@ -144,13 +151,13 @@ def _to_graded_input(performance: CoursePerformance) -> GradedCourseInput:
     )
 
 
-def _active_enrollments(db: Session, student_id: int) -> list[Enrollment]:
-    statement = (
-        select(Enrollment)
-        .where(Enrollment.student_id == student_id, Enrollment.status == "enrolled")
-        .options(joinedload(Enrollment.course))
-        .order_by(Enrollment.id)
-    )
+def _active_enrollments(
+    db: Session, student_id: int, *, semester_id: int | None = None
+) -> list[Enrollment]:
+    filters = [Enrollment.student_id == student_id, Enrollment.status == "enrolled"]
+    if semester_id is not None:
+        filters.append(Enrollment.semester_id == semester_id)
+    statement = select(Enrollment).where(*filters).options(joinedload(Enrollment.course)).order_by(Enrollment.id)
     return list(db.scalars(statement).unique().all())
 
 

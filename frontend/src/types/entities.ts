@@ -26,8 +26,50 @@ export type Enrollment = {
   course_id: number
   status: 'enrolled' | 'withdrawn'
   semester: string
+  semester_id: number | null
   created_at: string
   updated_at: string
+}
+
+export type SemesterCourse = {
+  id: number
+  course_id: number | null
+  course_name: string
+  course_code: string | null
+  credits: number
+  grade: string
+  grade_point: number
+  final_score: number | null
+  course_component: 'THEORY' | 'LAB' | 'COMBINED' | 'OTHER' | null
+  notes: string | null
+}
+
+export type Semester = {
+  id: number
+  number: number
+  status: 'PREVIOUS' | 'CURRENT' | 'UPCOMING'
+  is_current: boolean
+  course_count: number
+  total_credits: number
+  gpa: GpaRead
+  created_at: string
+  updated_at: string
+}
+
+export type SemesterDetail = Semester & {
+  historical_courses: SemesterCourse[]
+  enrolled_courses: CoursePerformance[]
+}
+
+export type SemesterCourseInput = {
+  course_id?: number | null
+  course_name: string
+  course_code?: string | null
+  credits: number
+  grade?: string | null
+  final_score?: number | null
+  course_component?: 'THEORY' | 'LAB' | 'COMBINED' | 'OTHER' | null
+  notes?: string | null
 }
 
 export type CourseSummary = {
@@ -391,6 +433,95 @@ export type GpaSimulationResponse = {
   message: string | null
 }
 
+export type IntelligenceInsight = {
+  type: string
+  severity: InsightSeverity
+  title: string
+  description: string
+  supporting_data: Record<string, number | string | null>
+  source_metric: string
+}
+
+export type IntelligenceAssessment = {
+  assessment_type: AssessmentType
+  percentage: number
+}
+
+export type IntelligenceCourse = {
+  semester_id: number | null
+  semester_number: number | null
+  course_id: number | null
+  course_code: string | null
+  course_name: string
+  credits: number
+  status: string
+  score: number | null
+  grade: string | null
+  grade_point: number | null
+  attendance_percentage: number | null
+  attendance_health: AttendanceHealth
+  performance_category: string
+  assessments: IntelligenceAssessment[]
+  cat1_to_cat2_change: number | null
+}
+
+export type SemesterTrendPoint = {
+  semester_id: number
+  semester_number: number
+  status: string
+  sgpa: number | null
+  cumulative_gpa: number | null
+  completed_credits: number
+  known_credits: number
+  course_count: number
+  average_marks: number | null
+  gpa_change: number | null
+}
+
+export type SemesterComparison = {
+  first_semester_id: number
+  first_semester_number: number
+  second_semester_id: number
+  second_semester_number: number
+  sgpa_difference: number | null
+  average_marks_difference: number | null
+  credits_difference: number
+  course_count_difference: number
+  attendance_difference: number | null
+  attendance_note: string
+}
+
+export type AcademicIntelligence = {
+  data_status: string
+  message: string | null
+  current_sgpa: number | null
+  previous_sgpa: number | null
+  sgpa_change: number | null
+  cgpa: GpaRead
+  completed_credits: number
+  current_semester_credits: number
+  total_known_credits: number
+  average_marks: number | null
+  overall_attendance: number | null
+  completed_courses: number
+  ongoing_courses: number
+  attendance_warning_threshold: number
+  attendance_healthy_threshold: number
+  low_score_threshold: number
+  strong_score_threshold: number
+  semester_trend: SemesterTrendPoint[]
+  credits_by_semester: Array<{
+    semester_id: number
+    semester_number: number
+    known_credits: number
+    completed_credits: number
+  }>
+  courses: IntelligenceCourse[]
+  course_trends: Array<Record<string, number | string | null>>
+  insights: IntelligenceInsight[]
+  comparison: SemesterComparison | null
+}
+
 export type DocumentCategory =
   | 'ACADEMIC'
   | 'EXAMINATION'
@@ -494,4 +625,3 @@ export type ConversationDetail = {
   updated_at: string
   messages: ChatMessage[]
 }
-

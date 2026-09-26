@@ -17,6 +17,8 @@ class Enrollment(TimestampMixin, Base):
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
     status: Mapped[str] = mapped_column(String(32), default="enrolled")
     semester: Mapped[str] = mapped_column(String(64), default="Current", index=True)
+    semester_id: Mapped[int | None] = mapped_column(ForeignKey("semesters.id"), nullable=True, index=True)
 
     student: Mapped["Student"] = relationship(back_populates="enrollments")
     course: Mapped["Course"] = relationship(back_populates="enrollments")
+    semester_record: Mapped["Semester | None"] = relationship(back_populates="enrollments")

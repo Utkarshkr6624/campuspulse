@@ -4,6 +4,7 @@ import { useShell } from '../hooks/useShell.tsx'
 const links = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/courses', label: 'Courses', end: false },
+  { to: '/semesters', label: 'Semesters', end: false },
   { to: '/marks', label: 'Marks', end: false },
   { to: '/attendance', label: 'Attendance', end: false },
   { to: '/exams', label: 'Exams', end: false },

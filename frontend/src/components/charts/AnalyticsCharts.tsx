@@ -72,6 +72,34 @@ export function PerformanceLineChart({
   )
 }
 
+export function GpaHistoryLineChart({
+  data,
+}: {
+  data: Array<{ semester: string; gpa: number }>
+}) {
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+          <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" />
+          <XAxis dataKey="semester" tick={{ fill: CHART_COLORS.muted, fontSize: 11 }} />
+          <YAxis domain={[0, 'auto']} tick={{ fill: CHART_COLORS.muted, fontSize: 11 }} />
+          <Tooltip content={<ChartTooltip />} />
+          <Line
+            type="monotone"
+            dataKey="gpa"
+            name="SGPA"
+            stroke={CHART_COLORS.brand}
+            strokeWidth={2.5}
+            dot={{ r: 4, fill: CHART_COLORS.accent }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export function CourseScoreBarChart({
   data,
 }: {

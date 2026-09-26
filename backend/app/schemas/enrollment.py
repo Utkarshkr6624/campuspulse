@@ -37,5 +37,6 @@ class EnrollmentRead(BaseModel):
     course_id: int
     status: EnrollmentStatus
     semester: str
+    semester_id: int | None = None
     created_at: datetime
     updated_at: datetime
