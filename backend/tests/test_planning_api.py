@@ -31,6 +31,9 @@ def test_targets_scenarios_are_owned_and_scenario_marks_are_hypothetical(client,
     target = client.put("/api/targets/SGPA", headers=headers_a, json={"target_value": 8.5})
     assert target.status_code == 200
     assert target.json()["status"] == "IN_PROGRESS"
+    target = client.put("/api/targets/SGPA", headers=headers_a, json={"target_value": 9.0})
+    assert target.status_code == 200
+    assert target.json()["target_value"] == 9.0
     assert client.get("/api/targets", headers=headers_b).json() == []
 
     scenario_data = {
@@ -44,6 +47,15 @@ def test_targets_scenarios_are_owned_and_scenario_marks_are_hypothetical(client,
     assert created.status_code == 201, created.text
     body = created.json()
     assert body["projection"]["courses"][0]["projected_score"] > body["projection"]["courses"][0]["current_score"]
+    updated = client.patch("/api/scenarios/" + str(body["id"]), headers=headers_a, json={
+        "title": "Edited CAT1",
+        "assessments": [{
+            "course_id": course_id, "assessment_type": "CAT1",
+            "marks_obtained": 48, "maximum_marks": 50,
+        }],
+    })
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["title"] == "Edited CAT1"
     assert client.get("/api/scenarios/" + str(body["id"]), headers=headers_b).status_code == 404
     assert client.patch("/api/scenarios/" + str(body["id"]), headers=headers_b, json={"title": "stolen"}).status_code == 404
     assert client.delete("/api/scenarios/" + str(body["id"]), headers=headers_b).status_code == 404
@@ -56,6 +68,8 @@ def test_targets_scenarios_are_owned_and_scenario_marks_are_hypothetical(client,
     assert empty_target.json()["status"] == "INSUFFICIENT_DATA"
     assert client.delete("/api/targets/SGPA", headers=headers_b).status_code == 204
     assert len(client.get("/api/targets", headers=headers_a).json()) == 1
+    assert client.delete("/api/scenarios/" + str(body["id"]), headers=headers_a).status_code == 204
+    assert client.get("/api/scenarios", headers=headers_a).json() == []
 
 
 def test_scenario_validation_and_compare(client, auth_headers):

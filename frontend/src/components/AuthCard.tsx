@@ -31,14 +31,14 @@ export function AuthCard({
         <aside className="relative hidden flex-col justify-between overflow-hidden bg-[var(--cp-brand)] p-10 text-white lg:flex xl:p-14">
           <div className="relative z-10 flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--cp-accent)] text-xs font-black tracking-[-0.08em] text-[var(--cp-brand)]">CP</span>
-            <div><p className="text-sm font-semibold">CampusPulse</p><p className="text-xs text-white/55">Academic workspace</p></div>
+            <div><p className="text-sm font-semibold">CampusPulse</p><p className="text-xs text-white/75">Academic workspace</p></div>
           </div>
           <div className="relative z-10 max-w-lg pb-8">
             <p className="cp-kicker !text-[var(--cp-accent)]">Academic life, in focus</p>
             <h2 className="mt-4 text-4xl font-semibold leading-[1.08] tracking-[-0.055em] xl:text-5xl">One place to understand your progress.</h2>
             <p className="mt-5 max-w-md text-sm leading-7 text-white/65">Bring semesters, courses, marks, and plans together in a clear personal workspace.</p>
           </div>
-          <p className="relative z-10 text-xs text-white/45">A calmer view of the work you’re putting in.</p>
+          <p className="relative z-10 text-xs text-white/75">A calmer view of the work you’re putting in.</p>
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 -right-24 h-80 w-80 rounded-full border border-white/10" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-16 h-64 w-64 rounded-full border border-white/10" />
         </aside>

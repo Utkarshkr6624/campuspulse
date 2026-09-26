@@ -81,7 +81,7 @@ export function Sidebar() {
           <span className="flex h-10 w-10 items-center justify-center rounded-[0.8rem] bg-[var(--cp-accent)] text-[0.8rem] font-black tracking-[-0.08em] text-[var(--cp-brand)]">CP</span>
           <div className="min-w-0">
             <p className="text-[0.95rem] font-semibold tracking-tight">CampusPulse</p>
-            <p className="mt-0.5 text-[0.69rem] text-white/55">Academic workspace</p>
+            <p className="mt-0.5 text-[0.69rem] text-white/75">Academic workspace</p>
           </div>
           <button type="button" className="ml-auto rounded-lg p-2 text-white/65 hover:bg-white/10 hover:text-white lg:hidden" onClick={closeSidebar} aria-label="Close navigation">
             <Icon name="close" className="h-5 w-5" />
@@ -91,7 +91,7 @@ export function Sidebar() {
         <nav className="cp-scrollbar flex-1 space-y-6 overflow-y-auto px-3 pb-4 pt-3" aria-label="Primary">
           {navGroups.map((group) => (
             <section key={group.label}>
-              <h2 className="mb-2 px-3 text-[0.63rem] font-bold uppercase tracking-[0.16em] text-white/40">{group.label}</h2>
+              <h2 className="mb-2 px-3 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white/75">{group.label}</h2>
               <ul className="space-y-1">
                 {group.links.map((link) => (
                   <li key={link.to}>
@@ -117,7 +117,7 @@ export function Sidebar() {
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[0.65rem] font-semibold text-[var(--cp-accent)]">{student?.full_name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'CP'}</span>
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-white/90">{student?.full_name ?? 'CampusPulse'}</p>
-              <p className="mt-0.5 text-[0.65rem] text-white/45">Personal academic space</p>
+              <p className="mt-0.5 text-[0.68rem] text-white/70">Personal academic space</p>
             </div>
           </div>
         </div>

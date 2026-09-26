@@ -20,7 +20,7 @@ export function TextField({
       {label}
       <input
         id={fieldId}
-        className={`mt-1.5 min-h-11 w-full rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-[var(--cp-surface)] px-3.5 py-2.5 text-sm text-[var(--cp-ink)] shadow-[0_1px_2px_rgb(20_40_30/3%)] transition placeholder:text-[#97a29c] hover:border-[#c4d1c7] focus:border-[var(--cp-brand)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--cp-brand)_9%,transparent)] ${className}`}
+        className={`mt-1.5 min-h-11 w-full rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-[var(--cp-surface)] px-3.5 py-2.5 text-sm text-[var(--cp-ink)] shadow-[0_1px_2px_rgb(20_40_30/3%)] transition placeholder:text-[var(--cp-muted)] hover:border-[#c4d1c7] focus:border-[var(--cp-brand)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--cp-brand)_9%,transparent)] ${className}`}
         {...props}
       />
       {hint ? <span className="mt-1 block text-xs text-[var(--cp-muted)]">{hint}</span> : null}
