@@ -6,12 +6,12 @@ import { ShellProvider } from '../hooks/useShell.tsx'
 export function AppLayout() {
   return (
     <ShellProvider>
-      <div className="min-h-screen bg-[var(--cp-bg)] text-[var(--cp-ink)]">
+      <div className="cp-app-canvas text-[var(--cp-ink)]">
         <Sidebar />
-        <div className="lg:pl-72">
+        <div className="min-h-screen lg:pl-[17rem]">
           <Header />
-          <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mx-auto max-w-6xl cp-fade-up">
+          <main className="px-4 py-6 sm:px-6 lg:px-9 lg:py-8">
+            <div className="cp-page cp-fade-up">
               <Outlet />
             </div>
           </main>

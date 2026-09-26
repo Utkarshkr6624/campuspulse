@@ -96,10 +96,12 @@ export function AssignmentsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState<EditorState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [pendingId, setPendingId] = useState<number | null>(null)
 
   const [filterStatus, setFilterStatus] = useState('')
   const [filterCourseId, setFilterCourseId] = useState('')
@@ -195,6 +197,7 @@ export function AssignmentsPage() {
       return
     }
     setFormError(null)
+    setSuccess(null)
     setSubmitting(true)
     try {
       const payload = {
@@ -214,6 +217,7 @@ export function AssignmentsPage() {
       } else {
         await updateAssignment(editor.assignment.id, payload)
       }
+      setSuccess(editor.mode === 'create' ? 'Assignment added successfully.' : 'Assignment updated successfully.')
       setEditor(null)
       await load()
     } catch (caught) {
@@ -224,11 +228,15 @@ export function AssignmentsPage() {
   }
 
   async function handleStatusChange(assignment: Assignment, nextStatus: AssignmentStatusOption) {
+    setPendingId(assignment.id)
     try {
       await updateAssignment(assignment.id, { status: nextStatus })
+      setSuccess('Assignment status updated.')
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not update status.')
+    } finally {
+      setPendingId(null)
     }
   }
 
@@ -237,11 +245,15 @@ export function AssignmentsPage() {
     if (!confirmed) {
       return
     }
+    setPendingId(assignment.id)
     try {
       await deleteAssignment(assignment.id)
+      setSuccess('Assignment deleted successfully.')
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete assignment.')
+    } finally {
+      setPendingId(null)
     }
   }
 
@@ -312,6 +324,8 @@ export function AssignmentsPage() {
         </SelectField>
       </Card>
 
+      {success ? <p role="status" className="text-sm font-medium text-[var(--cp-success)]">{success}</p> : null}
+
       {error ? <Alert>{error}</Alert> : null}
       {loading ? (
         <p className="text-sm text-[var(--cp-muted)]" role="status">
@@ -361,11 +375,11 @@ export function AssignmentsPage() {
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(assignment)}>
+                    <Button size="sm" variant="secondary" disabled={pendingId === assignment.id} onClick={() => openEdit(assignment)}>
                       Edit
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => void handleDelete(assignment)}>
-                      Delete
+                    <Button size="sm" variant="ghost" disabled={pendingId === assignment.id} onClick={() => void handleDelete(assignment)}>
+                      {pendingId === assignment.id ? 'Saving…' : 'Delete'}
                     </Button>
                   </div>
                 </div>
@@ -376,7 +390,7 @@ export function AssignmentsPage() {
                       size="sm"
                       variant={assignment.status === item ? 'primary' : 'secondary'}
                       onClick={() => void handleStatusChange(assignment, item)}
-                      disabled={assignment.status === item}
+                      disabled={assignment.status === item || pendingId === assignment.id}
                     >
                       {ASSIGNMENT_STATUS_LABELS[item]}
                     </Button>

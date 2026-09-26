@@ -26,6 +26,13 @@ class StudentCreate(BaseModel):
     def normalize_student_email(cls, value: object) -> object:
         return normalize_email(value)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes.")
+        return value
+
 
 class StudentUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -56,6 +63,7 @@ class StudentRead(BaseModel):
     email: EmailStr
     university_id: str
     role: str
+    official_cgpa: float | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -69,8 +77,19 @@ class LoginRequest(BaseModel):
     def normalize_login_email(cls, value: object) -> object:
         return normalize_email(value)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes.")
+        return value
+
 
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     student: StudentRead
+
+
+class AcademicProfileUpdate(BaseModel):
+    official_cgpa: float | None = Field(default=None, ge=0, le=10)

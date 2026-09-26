@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.roles import UserRole
-from app.core.security import read_student_id
+from app.core.security import read_student_token
 from app.db.session import get_db
 from app.models.student import Student
 
@@ -17,9 +17,9 @@ def get_current_student(
 ) -> Student:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise UnauthorizedError("Authentication is required.")
-    student_id = read_student_id(credentials.credentials)
+    student_id, token_version = read_student_token(credentials.credentials)
     student = db.get(Student, student_id)
-    if student is None:
+    if student is None or student.token_version != token_version:
         raise UnauthorizedError("Invalid authentication token.")
     return student
 

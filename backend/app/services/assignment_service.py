@@ -44,7 +44,7 @@ def get_assignment(db: Session, student_id: int, assignment_id: int) -> Assignme
 
 
 def create_assignment(db: Session, student_id: int, data: AssignmentCreate) -> Assignment:
-    course_service.get_course(db, data.course_id)
+    course_service.get_course(db, data.course_id, student_id)
     require_active_enrollment(db, student_id, data.course_id)
     assignment = Assignment(
         student_id=student_id,

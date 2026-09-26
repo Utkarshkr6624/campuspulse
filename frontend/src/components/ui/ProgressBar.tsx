@@ -6,7 +6,7 @@ type ProgressBarProps = {
 export function ProgressBar({ value, label }: ProgressBarProps) {
   const safe = value === null ? 0 : Math.max(0, Math.min(100, value))
   const tone =
-    value === null ? 'bg-slate-200' : safe >= 85 ? 'bg-teal-600' : safe >= 75 ? 'bg-[var(--cp-brand)]' : 'bg-amber-500'
+    value === null ? 'bg-slate-200' : safe >= 85 ? 'bg-[var(--cp-success)]' : safe >= 75 ? 'bg-[var(--cp-brand)]' : 'bg-[var(--cp-warning)]'
 
   return (
     <div>
@@ -17,7 +17,7 @@ export function ProgressBar({ value, label }: ProgressBarProps) {
         </div>
       ) : null}
       <div
-        className="h-2.5 overflow-hidden rounded-full bg-slate-100"
+        className="h-2 overflow-hidden rounded-full bg-[#edf1ed]"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}

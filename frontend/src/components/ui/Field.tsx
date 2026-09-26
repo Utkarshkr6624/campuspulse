@@ -16,11 +16,11 @@ export function TextField({
 }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
   const fieldId = id ?? props.name
   return (
-    <label className="block text-sm font-medium text-slate-700" htmlFor={fieldId}>
+    <label className="block text-sm font-medium text-[var(--cp-ink)]" htmlFor={fieldId}>
       {label}
       <input
         id={fieldId}
-        className={`mt-1.5 w-full rounded-xl border border-[var(--cp-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--cp-ink)] transition outline-none focus:border-[var(--cp-brand)] ${className}`}
+        className={`mt-1.5 min-h-11 w-full rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-[var(--cp-surface)] px-3.5 py-2.5 text-sm text-[var(--cp-ink)] shadow-[0_1px_2px_rgb(20_40_30/3%)] transition placeholder:text-[#97a29c] hover:border-[#c4d1c7] focus:border-[var(--cp-brand)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--cp-brand)_9%,transparent)] ${className}`}
         {...props}
       />
       {hint ? <span className="mt-1 block text-xs text-[var(--cp-muted)]">{hint}</span> : null}
@@ -44,11 +44,11 @@ export function SelectField({
 }: FieldProps & SelectHTMLAttributes<HTMLSelectElement>) {
   const fieldId = id ?? props.name
   return (
-    <label className="block text-sm font-medium text-slate-700" htmlFor={fieldId}>
+    <label className="block text-sm font-medium text-[var(--cp-ink)]" htmlFor={fieldId}>
       {label}
       <select
         id={fieldId}
-        className={`mt-1.5 w-full rounded-xl border border-[var(--cp-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--cp-ink)] transition outline-none focus:border-[var(--cp-brand)] ${className}`}
+        className={`mt-1.5 min-h-11 w-full rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-[var(--cp-surface)] px-3.5 py-2.5 text-sm text-[var(--cp-ink)] shadow-[0_1px_2px_rgb(20_40_30/3%)] transition hover:border-[#c4d1c7] focus:border-[var(--cp-brand)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--cp-brand)_9%,transparent)] ${className}`}
         {...props}
       >
         {children}
@@ -73,11 +73,11 @@ export function TextAreaField({
 }: FieldProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const fieldId = id ?? props.name
   return (
-    <label className="block text-sm font-medium text-slate-700" htmlFor={fieldId}>
+    <label className="block text-sm font-medium text-[var(--cp-ink)]" htmlFor={fieldId}>
       {label}
       <textarea
         id={fieldId}
-        className={`mt-1.5 w-full rounded-xl border border-[var(--cp-border)] bg-white px-3.5 py-2.5 text-sm text-[var(--cp-ink)] transition outline-none focus:border-[var(--cp-brand)] ${className}`}
+        className={`mt-1.5 w-full rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-[var(--cp-surface)] px-3.5 py-2.5 text-sm leading-6 text-[var(--cp-ink)] shadow-[0_1px_2px_rgb(20_40_30/3%)] transition hover:border-[#c4d1c7] focus:border-[var(--cp-brand)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--cp-brand)_9%,transparent)] ${className}`}
         {...props}
       />
       {hint ? <span className="mt-1 block text-xs text-[var(--cp-muted)]">{hint}</span> : null}

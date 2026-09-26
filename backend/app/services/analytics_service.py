@@ -115,7 +115,7 @@ def list_course_analytics(db: Session, student_id: int) -> list[CourseAnalytics]
 
     results: list[CourseAnalytics] = []
     for item in courses:
-        course = course_service.get_course(db, item.course.id)
+        course = course_service.get_course(db, item.course.id, student_id)
         scheme = grading_scheme_service.resolve_scheme_for_course(db, course.grading_scheme_id)
         required = sum(1 for weight in scheme.weights if weight.weight_percent > 0)
         att = attendance_by_course.get(item.course.id)
@@ -154,7 +154,10 @@ def get_performance_trend(db: Session, student_id: int) -> PerformanceTrend:
     for mark in marks:
         percentage = assessment_percentage(mark.marks_obtained, mark.maximum_marks)
         try:
-            label = ASSESSMENT_TYPE_LABELS[AssessmentType(mark.assessment_type)]
+            label = ASSESSMENT_TYPE_LABELS.get(
+                mark.assessment_type,
+                mark.assessment_type.replace("_", " ").title(),
+            )
         except ValueError:
             label = mark.assessment_type
         point = PerformancePoint(
@@ -400,7 +403,7 @@ def simulate_gpa(db: Session, student_id: int, payload: GpaSimulationRequest) ->
     results: list[GpaSimulationCourseResult] = []
 
     for performance in performances:
-        course = course_service.get_course(db, performance.course.id)
+        course = course_service.get_course(db, performance.course.id, student_id)
         scheme = grading_scheme_service.resolve_scheme_for_course(db, course.grading_scheme_id)
         bands = _band_rules(scheme.grade_bands) or default_bands
 
@@ -478,6 +481,45 @@ def simulate_gpa(db: Session, student_id: int, payload: GpaSimulationRequest) ->
             if projected.status == "complete"
             else projected.message or "Provide hypothetical grades for incomplete courses."
         ),
+    )
+
+
+def project_cgpa_from_semester_scenario(
+    db: Session, student_id: int, projected_semester_gpa: GpaRead
+) -> GpaRead:
+    """Combine prior credits with a simulated current-semester result via the GPA engine."""
+    existing = academic_service.get_cgpa(db, student_id)
+    current = academic_service.get_semester_gpa(db, student_id)
+    prior_credits = max(0, existing.total_credits - current.total_credits)
+    inputs: list[GradedCourseInput] = []
+
+    if prior_credits and existing.value is not None:
+        prior_quality_points = existing.value * existing.total_credits
+        if current.value is not None:
+            prior_quality_points -= current.value * current.total_credits
+        inputs.append(GradedCourseInput(
+            course_id=-1,
+            credits=prior_credits,
+            grade_point=prior_quality_points / prior_credits,
+            status="complete",
+        ))
+
+    if projected_semester_gpa.value is not None and projected_semester_gpa.total_credits:
+        inputs.append(GradedCourseInput(
+            course_id=-2,
+            credits=projected_semester_gpa.total_credits,
+            grade_point=projected_semester_gpa.value,
+            status="complete",
+        ))
+
+    result = compute_gpa(inputs)
+    return GpaRead(
+        status=result.status,
+        value=result.value,
+        credited_courses=result.credited_courses,
+        total_credits=result.total_credits,
+        semester=None,
+        message=result.message,
     )
 
 

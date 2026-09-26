@@ -36,11 +36,29 @@ def list_course_performance(
 
 
 def get_semester_gpa(db: Session, student_id: int, semester: str | None = None) -> GpaRead:
-    performances = list_course_performance(db, student_id)
+    from app.models.semester import Semester
+
+    current_semester = db.scalar(
+        select(Semester).where(Semester.student_id == student_id, Semester.is_current.is_(True))
+    ) if semester is None else None
+    performances = list_course_performance(
+        db,
+        student_id,
+        semester_id=current_semester.id if current_semester else None,
+    )
     if semester is not None:
         performances = [item for item in performances if item.semester == semester]
     graded = [_to_graded_input(item) for item in performances]
     result = compute_gpa(graded)
+    if result.value is None and current_semester is not None and current_semester.recorded_sgpa is not None:
+        return GpaRead(
+            status="recorded",
+            value=current_semester.recorded_sgpa,
+            credited_courses=1 if current_semester.recorded_credits > 0 else 0,
+            total_credits=float(current_semester.recorded_credits),
+            semester=semester or f"Semester {current_semester.number}",
+            message="Official semester SGPA recorded manually; course-level calculation is not available.",
+        )
     return GpaRead(
         status=result.status,
         value=result.value,

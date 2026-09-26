@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     document_storage_backend: str = "local"
     document_storage_path: str = "./storage/uploads"
     document_max_upload_bytes: int = DEFAULT_MAX_UPLOAD_BYTES
-    ai_provider: str = "mock"
-    ai_model: str = "gpt-4o-mini"
-    ai_base_url: str = "https://api.openai.com/v1"
+    ai_provider: str = "deterministic"
+    ai_model: str = "rules"
+    ai_base_url: str = ""
     ai_api_key: str | None = None
     ai_timeout_seconds: int = 30
     ai_max_history_messages: int = 10

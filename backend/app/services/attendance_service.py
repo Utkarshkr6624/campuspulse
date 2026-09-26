@@ -30,7 +30,7 @@ def list_records(db: Session, student_id: int) -> list[AttendanceRecord]:
 
 
 def list_records_for_course(db: Session, student_id: int, course_id: int) -> list[AttendanceRecord]:
-    course_service.get_course(db, course_id)
+    course_service.get_course(db, course_id, student_id)
     statement = (
         select(AttendanceRecord)
         .where(
@@ -56,7 +56,7 @@ def get_record(db: Session, student_id: int, record_id: int) -> AttendanceRecord
 
 
 def create_record(db: Session, student_id: int, data: AttendanceCreate) -> AttendanceRecord:
-    course_service.get_course(db, data.course_id)
+    course_service.get_course(db, data.course_id, student_id)
     _require_active_enrollment(db, student_id, data.course_id)
     if data.attendance_date > date.today():
         raise BadRequestError("Attendance date cannot be in the future.")
@@ -132,7 +132,7 @@ def build_overview(db: Session, student_id: int) -> AttendanceOverview:
 
 def course_summary(db: Session, student_id: int, course_id: int) -> CourseAttendanceSummary:
     records = list_records_for_course(db, student_id, course_id)
-    course = course_service.get_course(db, course_id)
+    course = course_service.get_course(db, course_id, student_id)
     statuses = [item.status for item in records]
     summary = summarize_statuses(statuses)
     return CourseAttendanceSummary(

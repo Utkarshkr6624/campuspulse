@@ -17,6 +17,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   logout: () => Promise<void>
+  updateStudent: (student: Student) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -86,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
           setStudent(null)
         }
+      },
+      updateStudent(nextStudent) {
+        setStudent(nextStudent)
       },
     }),
     [student, loading],

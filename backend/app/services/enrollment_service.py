@@ -28,13 +28,14 @@ def get_enrollment(db: Session, student_id: int, enrollment_id: int) -> Enrollme
 
 
 def create_enrollment(db: Session, student_id: int, data: EnrollmentCreate) -> Enrollment:
-    course_service.get_course(db, data.course_id)
+    course_service.get_course(db, data.course_id, student_id)
+    semester = _resolve_semester(db, student_id, data.semester_id)
     enrollment = Enrollment(
         student_id=student_id,
         course_id=data.course_id,
         status=data.status,
-        semester=data.semester,
-        semester_id=db.scalar(
+        semester=f"Semester {semester.number}" if semester else data.semester,
+        semester_id=semester.id if semester else db.scalar(
             select(Semester.id).where(Semester.student_id == student_id, Semester.is_current.is_(True))
         ),
     )
@@ -52,7 +53,13 @@ def update_enrollment(
 ) -> Enrollment:
     enrollment = get_enrollment(db, student_id, enrollment_id)
     for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(enrollment, field, value)
+        if field == "semester_id":
+            semester = _resolve_semester(db, student_id, value)
+            enrollment.semester_id = semester.id if semester else None
+            if semester:
+                enrollment.semester = f"Semester {semester.number}"
+        else:
+            setattr(enrollment, field, value)
     commit_or_conflict(db, "Enrollment could not be updated.")
     db.refresh(enrollment)
     return enrollment
@@ -70,3 +77,14 @@ def count_active_enrollments(db: Session, student_id: int) -> int:
         Enrollment.status == "enrolled",
     )
     return len(list(db.scalars(statement).all()))
+
+
+def _resolve_semester(db: Session, student_id: int, semester_id: int | None) -> Semester | None:
+    if semester_id is None:
+        return None
+    semester = db.scalar(
+        select(Semester).where(Semester.id == semester_id, Semester.student_id == student_id)
+    )
+    if semester is None:
+        raise NotFoundError("Semester not found.")
+    return semester

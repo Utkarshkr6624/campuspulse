@@ -16,7 +16,7 @@ class LocalStorageBackend(StorageBackend):
         if not key or key != Path(key).name or ".." in key or "/" in key or "\\" in key:
             raise ValueError("Invalid storage key.")
         path = (self.root / key).resolve()
-        if not str(path).startswith(str(self.root)):
+        if not path.is_relative_to(self.root):
             raise ValueError("Invalid storage key.")
         return path
 

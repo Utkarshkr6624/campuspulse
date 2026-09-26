@@ -1,4 +1,4 @@
-from sqlalchemy import String
+from sqlalchemy import Float, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.roles import DEFAULT_USER_ROLE
@@ -15,6 +15,8 @@ class Student(TimestampMixin, Base):
     university_id: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(16), default=DEFAULT_USER_ROLE, index=True)
+    token_version: Mapped[int] = mapped_column(default=0, nullable=False)
+    official_cgpa: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="student")
     marks: Mapped[list["CourseMark"]] = relationship(back_populates="student")

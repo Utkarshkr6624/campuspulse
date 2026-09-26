@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_student
+from app.api.dependencies import get_current_admin
 from app.db.session import get_db
 from app.schemas.student import StudentCreate, StudentRead, StudentUpdate
 from app.services import student_service
 
-router = APIRouter(prefix="/students", tags=["students"], dependencies=[Depends(get_current_student)])
+router = APIRouter(prefix="/students", tags=["students"], dependencies=[Depends(get_current_admin)])
 
 
 @router.get("", response_model=list[StudentRead])

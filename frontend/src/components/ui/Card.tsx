@@ -9,9 +9,7 @@ type CardProps = {
 export function Card({ children, className = '', padded = true }: CardProps) {
   return (
     <div
-      className={`rounded-[var(--cp-radius)] border border-[var(--cp-border)] bg-[var(--cp-surface)] shadow-[var(--cp-shadow)] ${
-        padded ? 'p-5' : ''
-      } ${className}`}
+      className={`cp-panel ${padded ? 'p-5 sm:p-6' : ''} ${className}`}
     >
       {children}
     </div>
@@ -19,5 +17,5 @@ export function Card({ children, className = '', padded = true }: CardProps) {
 }
 
 export function CardTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <h2 className={`text-sm font-semibold tracking-wide text-[var(--cp-muted)] uppercase ${className}`}>{children}</h2>
+  return <h2 className={`text-base font-semibold tracking-tight text-[var(--cp-ink)] ${className}`}>{children}</h2>
 }

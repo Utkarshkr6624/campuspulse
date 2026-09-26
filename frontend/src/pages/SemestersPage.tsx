@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { Alert } from '../components/ui/Alert.tsx'
 import { Badge } from '../components/ui/Badge.tsx'
 import { Button } from '../components/ui/Button.tsx'
@@ -7,6 +8,7 @@ import { Card, CardTitle } from '../components/ui/Card.tsx'
 import { EmptyState } from '../components/ui/EmptyState.tsx'
 import { GpaHistoryLineChart } from '../components/charts/AnalyticsCharts.tsx'
 import { SelectField, TextField } from '../components/ui/Field.tsx'
+import { useAuth } from '../hooks/useAuth.tsx'
 import {
   addSemesterCourseHistory,
   createSemester,
@@ -19,6 +21,8 @@ import {
   setCurrentSemester,
   setupSemesters,
   updateSemesterCourseHistory,
+  updateSemester,
+  updateAcademicProfile,
 } from '../services/api.ts'
 import type { Course, Semester, SemesterCourse, SemesterCourseInput, SemesterDetail } from '../types/entities.ts'
 
@@ -31,6 +35,7 @@ function statusLabel(status: Semester['status']): string {
 }
 
 export function SemestersPage() {
+  const { student, updateStudent } = useAuth()
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [catalogCourses, setCatalogCourses] = useState<Course[]>([])
   const [detail, setDetail] = useState<SemesterDetail | null>(null)
@@ -43,6 +48,16 @@ export function SemestersPage() {
   const [setupNumber, setSetupNumber] = useState(1)
   const [addHistoryNow, setAddHistoryNow] = useState(true)
   const [newNumber, setNewNumber] = useState('')
+  const [newAcademicYear, setNewAcademicYear] = useState('')
+  const [newSgpa, setNewSgpa] = useState('')
+  const [newCredits, setNewCredits] = useState('')
+  const [newCurrent, setNewCurrent] = useState(false)
+  const [editAcademicYear, setEditAcademicYear] = useState('')
+  const [editRecordedSgpa, setEditRecordedSgpa] = useState('')
+  const [editRecordedCredits, setEditRecordedCredits] = useState('')
+  const [officialCgpa, setOfficialCgpa] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [success, setSuccess] = useState<string | null>(null)
   const [courseName, setCourseName] = useState('')
   const [catalogCourseId, setCatalogCourseId] = useState('')
   const [courseCode, setCourseCode] = useState('')
@@ -101,12 +116,25 @@ export function SemestersPage() {
   )
   const visibleDetail = detail?.id === selectedId ? detail : null
 
+  useEffect(() => {
+    if (!visibleDetail) return
+    setEditAcademicYear(visibleDetail.academic_year ?? '')
+    setEditRecordedSgpa(visibleDetail.recorded_sgpa == null ? '' : String(visibleDetail.recorded_sgpa))
+    setEditRecordedCredits(String(visibleDetail.recorded_credits ?? 0))
+  }, [visibleDetail])
+
+  useEffect(() => {
+    setOfficialCgpa(student?.official_cgpa == null ? '' : String(student.official_cgpa))
+  }, [student?.official_cgpa])
+
   async function runAction(action: () => Promise<unknown>, preferredId?: number | null) {
     setSaving(true)
     setError(null)
+    setSuccess(null)
     try {
       await action()
       await refresh(preferredId)
+      setSuccess('Changes saved successfully.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The request could not be completed.')
     } finally {
@@ -181,22 +209,111 @@ export function SemestersPage() {
     }
   }
 
+  async function saveSemester(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const number = Number(newNumber)
+    const sgpa = newSgpa === '' ? null : Number(newSgpa)
+    const recordedCredits = newCredits === '' ? 0 : Number(newCredits)
+    if (!Number.isInteger(number) || number < 1 || number > 8) {
+      setError('Semester number must be between 1 and 8.')
+      return
+    }
+    if (sgpa !== null && (!Number.isFinite(sgpa) || sgpa < 0 || sgpa > 10 || recordedCredits < 1)) {
+      setError('Enter an SGPA from 0 to 10 and its credits.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const created = await createSemester({
+        number,
+        set_current: newCurrent,
+        academic_year: newAcademicYear.trim() || null,
+        recorded_sgpa: sgpa,
+        recorded_credits: recordedCredits,
+      })
+      await refresh(created.id)
+      setSuccess(`Semester ${number} saved successfully.`)
+      setNewNumber('')
+      setNewAcademicYear('')
+      setNewSgpa('')
+      setNewCredits('')
+      setNewCurrent(false)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Semester could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveOfficialCgpa(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const value = officialCgpa.trim() === '' ? null : Number(officialCgpa)
+    if (value !== null && (!Number.isFinite(value) || value < 0 || value > 10)) {
+      setError('Official CGPA must be between 0 and 10.')
+      return
+    }
+    setProfileSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const updatedStudent = await updateAcademicProfile(value)
+      updateStudent(updatedStudent)
+      setSuccess('Official CGPA saved. Calculated CGPA remains separate.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Official CGPA could not be saved.')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  async function saveSemesterDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!visibleDetail) return
+    const sgpa = editRecordedSgpa.trim() === '' ? null : Number(editRecordedSgpa)
+    const recordedCredits = Number(editRecordedCredits || 0)
+    if (sgpa !== null && (!Number.isFinite(sgpa) || sgpa < 0 || sgpa > 10 || recordedCredits < 1)) {
+      setError('Enter an SGPA from 0 to 10 and its credits.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      await updateSemester(visibleDetail.id, {
+        academic_year: editAcademicYear.trim() || null,
+        recorded_sgpa: sgpa,
+        recorded_credits: recordedCredits,
+      })
+      await refresh(visibleDetail.id)
+      setSuccess(`Semester ${visibleDetail.number} updated successfully.`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Semester details could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--cp-ink)]">Semester management</h2>
+          <p className="cp-kicker">Academic journey</p>
+          <h2 className="cp-page-title mt-2">Your semesters</h2>
           <p className="mt-1 max-w-2xl text-sm text-[var(--cp-muted)]">
             Organize your academic history and keep current course activity connected to your semester.
           </p>
         </div>
         <Card className="min-w-44">
-          <p className="text-xs font-medium text-[var(--cp-muted)]">Cumulative GPA</p>
+          <p className="text-xs font-medium text-[var(--cp-muted)]">Calculated CGPA</p>
           <p className="mt-1 text-2xl font-semibold">{readableGpa(cgpa)}</p>
+          <p className="mt-2 text-xs text-[var(--cp-muted)]">Official / recorded: {readableGpa(officialCgpa === '' ? null : Number(officialCgpa))}</p>
         </Card>
       </div>
 
       {error ? <Alert>{error}</Alert> : null}
+      {success ? <p role="status" className="text-sm font-medium text-[var(--cp-success)]">{success}</p> : null}
       {loading ? <p role="status" className="text-sm text-[var(--cp-muted)]">Loading academic history…</p> : null}
 
       {!loading && (semesters.length === 0 || current === null) ? (
@@ -225,6 +342,19 @@ export function SemestersPage() {
       ) : null}
 
       {!loading && semesters.length > 0 ? (
+        <>
+        <div className="cp-panel flex gap-2 overflow-x-auto p-3 sm:p-4" aria-label="Academic journey">
+          {semesters.map((semester, index) => (
+            <div key={semester.id} className="flex min-w-[9.5rem] flex-1 items-center gap-2">
+              <button type="button" aria-pressed={selectedId === semester.id} onClick={() => setSelectedId(semester.id)} className={`min-w-0 flex-1 rounded-[0.8rem] border px-3 py-3 text-left transition ${selectedId === semester.id ? 'border-[#c7d9cc] bg-[var(--cp-brand-wash)]' : 'border-transparent hover:border-[var(--cp-border)] hover:bg-[var(--cp-surface-raised)]'}`}>
+                <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${semester.is_current ? 'bg-[var(--cp-success)]' : 'bg-[#bac6be]'}`} /><span className="text-xs font-semibold text-[var(--cp-ink)]">Semester {semester.number}</span></span>
+                <span className="mt-2 block text-[0.68rem] text-[var(--cp-muted)]">{semester.academic_year ? `${semester.academic_year} · ` : ''}{semester.is_current ? 'Current period' : `${statusLabel(semester.status)} · ${semester.total_credits} credits`}</span>
+                <span className="mt-1 block text-xs font-semibold text-[var(--cp-brand)]">SGPA {readableGpa(semester.gpa.value)}</span>
+              </button>
+              {index < semesters.length - 1 ? <span aria-hidden="true" className="hidden h-px w-4 shrink-0 bg-[var(--cp-border)] sm:block" /> : null}
+            </div>
+          ))}
+        </div>
         <div className="grid gap-6 xl:grid-cols-[0.85fr_1.4fr]">
           <div className="space-y-4">
             <Card className="space-y-3">
@@ -262,14 +392,17 @@ export function SemestersPage() {
                   <GpaHistoryLineChart data={gpaHistory} />
                 </div>
               ) : null}
-              <form className="flex items-end gap-3 border-t border-[var(--cp-border)] pt-4" onSubmit={(event) => {
-                event.preventDefault()
-                const number = Number(newNumber)
-                if (number > 0) void runAction(() => createSemester(number), null)
-                setNewNumber('')
-              }}>
-                <TextField label="Add semester number" type="number" min="1" max="100" value={newNumber} onChange={(event) => setNewNumber(event.target.value)} required />
-                <Button type="submit" variant="secondary" disabled={saving || !newNumber}>Add</Button>
+              <form className="grid gap-3 border-t border-[var(--cp-border)] pt-4 sm:grid-cols-2" onSubmit={(event) => void saveSemester(event)}>
+                <TextField label="Semester number" type="number" min="1" max="8" value={newNumber} onChange={(event) => setNewNumber(event.target.value)} required />
+                <TextField label="Academic year (optional)" placeholder="2026–27" value={newAcademicYear} onChange={(event) => setNewAcademicYear(event.target.value)} />
+                <TextField label="Recorded SGPA (optional)" type="number" min="0" max="10" step="0.01" value={newSgpa} onChange={(event) => setNewSgpa(event.target.value)} />
+                <TextField label="Credits for recorded SGPA" type="number" min="0" max="500" value={newCredits} onChange={(event) => setNewCredits(event.target.value)} />
+                <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={newCurrent} onChange={(event) => setNewCurrent(event.target.checked)} /> Set this as the current semester</label>
+                <Button type="submit" variant="secondary" disabled={saving || !newNumber}>{saving ? 'Saving…' : 'Add semester'}</Button>
+              </form>
+              <form className="space-y-3 border-t border-[var(--cp-border)] pt-4" onSubmit={(event) => void saveOfficialCgpa(event)}>
+                <div><p className="text-sm font-semibold">Official / recorded CGPA</p><p className="mt-1 text-xs text-[var(--cp-muted)]">Stored separately; it never replaces the calculated CGPA.</p></div>
+                <div className="flex items-end gap-3"><TextField label="Official CGPA" type="number" min="0" max="10" step="0.01" value={officialCgpa} onChange={(event) => setOfficialCgpa(event.target.value)} /><Button type="submit" variant="secondary" disabled={profileSaving}>{profileSaving ? 'Saving…' : 'Save'}</Button></div>
               </form>
             </Card>
           </div>
@@ -282,8 +415,19 @@ export function SemestersPage() {
                     <CardTitle>Semester {visibleDetail.number} details</CardTitle>
                     <p className="mt-1 text-sm text-[var(--cp-muted)]">{statusLabel(visibleDetail.status)} · {visibleDetail.total_credits} credits · SGPA {readableGpa(visibleDetail.gpa.value)}</p>
                   </div>
-                  {!visibleDetail.is_current ? <Button size="sm" variant="secondary" disabled={saving} onClick={() => void runAction(() => setCurrentSemester(visibleDetail.id), visibleDetail.id)}>Make current</Button> : null}
+                  <div className="flex flex-wrap gap-2">
+                    <Link to="/assistant" state={{ prompt: `Analyze my results for Semester ${visibleDetail.number}.` }} className="inline-flex min-h-9 items-center rounded-[var(--cp-radius-sm)] px-3 text-xs font-semibold text-[var(--cp-brand)] hover:bg-[var(--cp-brand-wash)]">Analyze this semester</Link>
+                    {!visibleDetail.is_current ? <Button size="sm" variant="secondary" disabled={saving} onClick={() => void runAction(() => setCurrentSemester(visibleDetail.id), visibleDetail.id)}>Make current</Button> : null}
+                  </div>
                 </div>
+
+                <form className="grid gap-3 rounded-xl border border-[var(--cp-border)] bg-slate-50/60 p-4 sm:grid-cols-2" onSubmit={(event) => void saveSemesterDetails(event)}>
+                  <TextField label="Academic year" placeholder="2026–27" value={editAcademicYear} onChange={(event) => setEditAcademicYear(event.target.value)} />
+                  <TextField label="Recorded SGPA (optional)" type="number" min="0" max="10" step="0.01" value={editRecordedSgpa} onChange={(event) => setEditRecordedSgpa(event.target.value)} />
+                  <TextField label="Credits for recorded SGPA" type="number" min="0" max="500" value={editRecordedCredits} onChange={(event) => setEditRecordedCredits(event.target.value)} />
+                  <div className="flex items-end"><Button type="submit" variant="secondary" disabled={saving}>{saving ? 'Saving…' : 'Save semester details'}</Button></div>
+                  <p className="text-xs text-[var(--cp-muted)] sm:col-span-2">Calculated SGPA from course results takes precedence. Recorded SGPA is used when course-level results are not available.</p>
+                </form>
 
                 {visibleDetail.is_current ? (
                   <div className="space-y-3">
@@ -372,6 +516,7 @@ export function SemestersPage() {
             ) : null}
           </div>
         </div>
+        </>
       ) : null}
     </section>
   )

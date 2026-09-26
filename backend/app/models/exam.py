@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text, Time
+from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.exam_types import EXAM_TYPE_VALUES
@@ -14,6 +14,10 @@ class Exam(TimestampMixin, Base):
     __tablename__ = "exams"
     __table_args__ = (
         CheckConstraint(f"exam_type IN ({_exam_type_values})", name="ck_exam_type"),
+        UniqueConstraint(
+            "student_id", "course_id", "title", "exam_type", "exam_date",
+            name="uq_exam_student_course_title_type_date",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

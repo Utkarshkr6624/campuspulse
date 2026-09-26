@@ -70,7 +70,7 @@ def ensure_identity_available(
 ) -> None:
     email_owner = db.scalar(select(Student).where(Student.email == email))
     if email_owner is not None and email_owner.id != student_id:
-        raise ConflictError("An account with that email already exists.")
+        raise ConflictError("An account with these details already exists.")
     id_owner = db.scalar(select(Student).where(Student.university_id == university_id))
     if id_owner is not None and id_owner.id != student_id:
-        raise ConflictError("An account with that university ID already exists.")
+        raise ConflictError("An account with these details already exists.")

@@ -1,16 +1,16 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 const variants = {
-  primary: 'bg-[var(--cp-brand)] text-white hover:bg-[var(--cp-brand-soft)]',
-  secondary: 'border border-[var(--cp-border)] bg-white text-[var(--cp-ink)] hover:bg-slate-50',
-  ghost: 'text-[var(--cp-muted)] hover:bg-slate-100 hover:text-[var(--cp-ink)]',
-  danger: 'bg-red-700 text-white hover:bg-red-800',
+  primary: 'bg-[var(--cp-brand)] text-white shadow-sm hover:bg-[var(--cp-brand-soft)] active:translate-y-px',
+  secondary: 'border border-[var(--cp-border)] bg-white text-[var(--cp-ink)] hover:border-[#c4d1c7] hover:bg-[var(--cp-surface-raised)] active:translate-y-px',
+  ghost: 'text-[var(--cp-muted)] hover:bg-[var(--cp-brand-wash)] hover:text-[var(--cp-brand)]',
+  danger: 'bg-[#a8332c] text-white hover:bg-[#8f2a25] active:translate-y-px',
 } as const
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2.5 text-sm',
-  lg: 'px-5 py-3 text-sm',
+  sm: 'min-h-9 px-3 text-xs',
+  md: 'min-h-10 px-4 text-sm',
+  lg: 'min-h-12 px-5 text-sm',
 } as const
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -30,7 +30,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-55 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-[var(--cp-radius-sm)] font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-55 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
       {children}

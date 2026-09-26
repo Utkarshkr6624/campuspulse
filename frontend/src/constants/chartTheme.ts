@@ -1,19 +1,19 @@
 export const CHART_COLORS = {
-  brand: '#10233f',
-  brandSoft: '#1a3358',
-  accent: '#c9a227',
-  success: '#0f766e',
-  muted: '#94a3b8',
-  danger: '#b91c1c',
-  grid: '#e2e8f0',
+  brand: '#173b30',
+  brandSoft: '#285747',
+  accent: '#b3d65d',
+  success: '#19765b',
+  muted: '#8b9990',
+  danger: '#b33f36',
+  grid: '#e4eae5',
 } as const
 
 export const GRADE_CHART_PALETTE = [
-  '#10233f',
-  '#1a3358',
-  '#2f4f73',
-  '#c9a227',
-  '#0f766e',
-  '#64748b',
-  '#b91c1c',
+  '#173b30',
+  '#3b715c',
+  '#739a82',
+  '#b3d65d',
+  '#19765b',
+  '#8b9990',
+  '#b33f36',
 ] as const

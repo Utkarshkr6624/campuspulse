@@ -44,7 +44,7 @@ def get_exam(db: Session, student_id: int, exam_id: int) -> Exam:
 
 
 def create_exam(db: Session, student_id: int, data: ExamCreate) -> Exam:
-    course_service.get_course(db, data.course_id)
+    course_service.get_course(db, data.course_id, student_id)
     require_active_enrollment(db, student_id, data.course_id)
     exam = Exam(
         student_id=student_id,

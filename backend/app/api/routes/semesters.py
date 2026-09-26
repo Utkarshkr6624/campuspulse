@@ -12,6 +12,7 @@ from app.schemas.semester import (
     SemesterHistoryCreate,
     SemesterRead,
     SemesterSetup,
+    SemesterUpdate,
 )
 from app.services import semester_service
 
@@ -52,6 +53,16 @@ def get_semester(
     return semester_service.get_semester_detail(db, student.id, semester_id)
 
 
+@router.patch("/{semester_id}", response_model=SemesterRead)
+def update_semester(
+    semester_id: int,
+    data: SemesterUpdate,
+    student: Student = Depends(get_current_student),
+    db: Session = Depends(get_db),
+) -> SemesterRead:
+    return semester_service.update_semester(db, student.id, semester_id, data)
+
+
 @router.post("/{semester_id}/current", response_model=list[SemesterRead])
 def set_current_semester(
     semester_id: int,
@@ -78,10 +89,7 @@ def add_history_courses(
     student: Student = Depends(get_current_student),
     db: Session = Depends(get_db),
 ) -> list[SemesterCourseRead]:
-    return [
-        semester_service.add_history_course(db, student.id, semester_id, item)
-        for item in data.courses
-    ]
+    return semester_service.add_history_courses(db, student.id, semester_id, data.courses)
 
 
 @router.patch("/{semester_id}/courses/{course_record_id}", response_model=SemesterCourseRead)

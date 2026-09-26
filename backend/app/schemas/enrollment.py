@@ -10,6 +10,7 @@ EnrollmentStatus = Literal["enrolled", "withdrawn"]
 
 class EnrollmentCreate(BaseModel):
     course_id: int
+    semester_id: int | None = None
     status: EnrollmentStatus = "enrolled"
     semester: str = Field(default="Current", min_length=1, max_length=64)
 
@@ -21,6 +22,7 @@ class EnrollmentCreate(BaseModel):
 
 class EnrollmentUpdate(BaseModel):
     status: EnrollmentStatus | None = None
+    semester_id: int | None = None
     semester: str | None = Field(default=None, min_length=1, max_length=64)
 
     @field_validator("semester", mode="before")

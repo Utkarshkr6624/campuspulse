@@ -4,14 +4,14 @@ type AlertProps = {
 }
 
 const tones = {
-  error: 'border-red-200 bg-red-50 text-red-800',
-  info: 'border-slate-200 bg-slate-50 text-slate-700',
-  success: 'border-teal-200 bg-teal-50 text-teal-800',
+  error: 'border-[#efd2ce] bg-[#fcf2f0] text-[#8f312b]',
+  info: 'border-[var(--cp-border)] bg-[var(--cp-surface-raised)] text-[var(--cp-ink)]',
+  success: 'border-[#cce7d6] bg-[#eef8f1] text-[#176445]',
 }
 
 export function Alert({ tone = 'error', children }: AlertProps) {
   return (
-    <p className={`rounded-xl border px-4 py-3 text-sm ${tones[tone]}`} role="alert">
+    <p className={`rounded-[var(--cp-radius-sm)] border px-4 py-3 text-sm leading-6 ${tones[tone]}`} role="alert">
       {children}
     </p>
   )

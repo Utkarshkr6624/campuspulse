@@ -29,7 +29,7 @@ def list_marks(db: Session, student_id: int) -> list[CourseMark]:
 
 
 def list_marks_for_course(db: Session, student_id: int, course_id: int) -> list[CourseMark]:
-    course_service.get_course(db, course_id)
+    course_service.get_course(db, course_id, student_id)
     statement = (
         select(CourseMark)
         .where(CourseMark.student_id == student_id, CourseMark.course_id == course_id)
@@ -52,12 +52,12 @@ def get_mark(db: Session, student_id: int, mark_id: int) -> CourseMark:
 
 
 def create_mark(db: Session, student_id: int, data: CourseMarkCreate) -> CourseMark:
-    course_service.get_course(db, data.course_id)
+    course_service.get_course(db, data.course_id, student_id)
     _require_active_enrollment(db, student_id, data.course_id)
     mark = CourseMark(
         student_id=student_id,
         course_id=data.course_id,
-        assessment_type=data.assessment_type.value,
+        assessment_type=data.assessment_type,
         marks_obtained=data.marks_obtained,
         maximum_marks=data.maximum_marks,
         assessment_date=data.assessment_date,
@@ -74,7 +74,7 @@ def update_mark(db: Session, student_id: int, mark_id: int, data: CourseMarkUpda
     mark = get_mark(db, student_id, mark_id)
     changes = data.model_dump(exclude_unset=True)
     if "assessment_type" in changes and changes["assessment_type"] is not None:
-        changes["assessment_type"] = changes["assessment_type"].value
+        changes["assessment_type"] = changes["assessment_type"]
 
     next_obtained = changes.get("marks_obtained", mark.marks_obtained)
     next_maximum = changes.get("maximum_marks", mark.maximum_marks)

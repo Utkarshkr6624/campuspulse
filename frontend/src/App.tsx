@@ -19,6 +19,7 @@ import { PlannerPage } from './pages/PlannerPage.tsx'
 import { RegisterPage } from './pages/RegisterPage.tsx'
 import { StudentsPage } from './pages/StudentsPage.tsx'
 import { SemestersPage } from './pages/SemestersPage.tsx'
+import { GoalsPage } from './pages/GoalsPage.tsx'
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
               <Route path="assignments" element={<AssignmentsPage />} />
               <Route path="planner" element={<PlannerPage />} />
               <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="goals" element={<GoalsPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="documents/:documentId" element={<DocumentDetailPage />} />
               <Route path="assistant" element={<AssistantPage />} />

@@ -21,13 +21,13 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(student_id: int) -> str:
+def create_access_token(student_id: int, token_version: int = 0) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {"sub": str(student_id), "exp": expires_at}
+    payload = {"sub": str(student_id), "ver": token_version, "exp": expires_at}
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=_ALGORITHM)
 
 
-def read_student_id(token: str) -> int:
+def read_student_token(token: str) -> tuple[int, int]:
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[_ALGORITHM])
     except jwt.ExpiredSignatureError:
@@ -38,4 +38,7 @@ def read_student_id(token: str) -> int:
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.isdigit():
         raise UnauthorizedError("Invalid authentication token.")
-    return int(subject)
+    version = payload.get("ver", 0)
+    if not isinstance(version, int) or version < 0:
+        raise UnauthorizedError("Invalid authentication token.")
+    return int(subject), version

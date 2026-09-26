@@ -2,12 +2,12 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.core.assessment_types import AssessmentType
+from app.schemas.common import strip_upper
 
 
 class CourseMarkCreate(BaseModel):
     course_id: int
-    assessment_type: AssessmentType
+    assessment_type: str = Field(min_length=1, max_length=64)
     marks_obtained: float = Field(ge=0)
     maximum_marks: float = Field(gt=0)
     assessment_date: date | None = None
@@ -18,9 +18,14 @@ class CourseMarkCreate(BaseModel):
             raise ValueError("marks_obtained cannot exceed maximum_marks")
         return self
 
+    @field_validator("assessment_type", mode="before")
+    @classmethod
+    def normalize_assessment_type(cls, value: object) -> object:
+        return strip_upper(value)
+
 
 class CourseMarkUpdate(BaseModel):
-    assessment_type: AssessmentType | None = None
+    assessment_type: str | None = Field(default=None, min_length=1, max_length=64)
     marks_obtained: float | None = Field(default=None, ge=0)
     maximum_marks: float | None = Field(default=None, gt=0)
     assessment_date: date | None = None
@@ -29,6 +34,11 @@ class CourseMarkUpdate(BaseModel):
     @classmethod
     def keep_explicit_null(cls, value: object) -> object:
         return value
+
+    @field_validator("assessment_type", mode="before")
+    @classmethod
+    def normalize_assessment_type(cls, value: object) -> object:
+        return strip_upper(value) if value is not None else None
 
 
 class CourseSummary(BaseModel):
@@ -46,7 +56,7 @@ class CourseMarkRead(BaseModel):
     id: int
     student_id: int
     course_id: int
-    assessment_type: AssessmentType
+    assessment_type: str
     marks_obtained: float
     maximum_marks: float
     assessment_date: date | None

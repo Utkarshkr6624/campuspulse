@@ -17,6 +17,7 @@ import type {
   ConversationDetail,
   ConversationSummary,
   Course,
+  CourseSummary,
   CourseAnalytics,
   CourseAttendanceSummary,
   CourseMark,
@@ -44,7 +45,7 @@ import type {
   SemesterCourse,
   SemesterCourseInput,
 } from '../types/entities.ts'
-import { request } from './http.ts'
+import { API_BASE_URL, request } from './http.ts'
 
 function toQuery(params: Record<string, string | number | boolean | undefined | null>): string {
   const search = new URLSearchParams()
@@ -81,10 +82,48 @@ export function setupSemesters(currentSemester: number): Promise<Semester[]> {
   })
 }
 
-export function createSemester(number: number, setCurrent = false): Promise<Semester> {
+export function createSemester(input: {
+  number: number
+  set_current?: boolean
+  academic_year?: string | null
+  recorded_sgpa?: number | null
+  recorded_credits?: number
+}): Promise<Semester> {
   return request<Semester>('/api/semesters', {
     method: 'POST',
-    body: { number, set_current: setCurrent },
+    body: input,
+  })
+}
+
+export function updateSemester(semesterId: number, input: {
+  academic_year?: string | null
+  recorded_sgpa?: number | null
+  recorded_credits?: number
+}): Promise<Semester> {
+  return request<Semester>(`/api/semesters/${semesterId}`, { method: 'PATCH', body: input })
+}
+
+export function createCourse(input: {
+  code: string
+  title: string
+  credits: number
+  semester_id: number
+}): Promise<Course> {
+  return request<Course>('/api/courses', { method: 'POST', body: input })
+}
+
+export function updateCourse(courseId: number, input: Partial<Pick<Course, 'code' | 'title' | 'credits'>>): Promise<Course> {
+  return request<Course>(`/api/courses/${courseId}`, { method: 'PATCH', body: input })
+}
+
+export function deleteCourse(courseId: number): Promise<void> {
+  return request<void>(`/api/courses/${courseId}`, { method: 'DELETE' })
+}
+
+export function updateAcademicProfile(officialCgpa: number | null): Promise<Student> {
+  return request<Student>('/api/auth/academic-profile', {
+    method: 'PATCH',
+    body: { official_cgpa: officialCgpa },
   })
 }
 
@@ -121,10 +160,10 @@ export function deleteSemesterCourseHistory(semesterId: number, courseId: number
   return request<void>(`/api/semesters/${semesterId}/courses/${courseId}`, { method: 'DELETE' })
 }
 
-export function createEnrollment(courseId: number, semester = 'Current'): Promise<Enrollment> {
+export function createEnrollment(courseId: number, semester = 'Current', semesterId?: number): Promise<Enrollment> {
   return request<Enrollment>('/api/enrollments', {
     method: 'POST',
-    body: { course_id: courseId, status: 'enrolled', semester },
+    body: { course_id: courseId, status: 'enrolled', semester, semester_id: semesterId ?? null },
   })
 }
 
@@ -307,9 +346,24 @@ export function deleteDocument(documentId: number): Promise<void> {
 }
 
 export function documentFileUrl(documentId: number): string {
-  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
-  return `${base}/api/documents/${documentId}/file`
+  return API_BASE_URL ? `${API_BASE_URL}/api/documents/${documentId}/file` : ''
 }
+
+export type TargetType = 'SGPA' | 'CGPA'
+export type AcademicTarget = { id: number; target_type: TargetType; target_value: number; current_value: number | null; status: 'INSUFFICIENT_DATA' | 'IN_PROGRESS' | 'REACHED'; remaining: number | null }
+export type ScenarioAssessment = { course_id: number; assessment_type: string; marks_obtained: number; maximum_marks: number }
+export type ScenarioCourseResult = { course: CourseSummary; current_score: number | null; projected_score: number | null; current_grade: string | null; projected_grade: string | null; source: 'ACTUAL' | 'SCENARIO' }
+export type ScenarioProjection = { current_sgpa: GpaRead; projected_sgpa: GpaRead; current_cgpa: GpaRead; projected_cgpa: GpaRead; courses: ScenarioCourseResult[]; note: string }
+export type SavedScenario = { id: number; title: string; assessments: ScenarioAssessment[]; notes: string | null; projection: ScenarioProjection; created_at: string; updated_at: string }
+export function getTargets(): Promise<AcademicTarget[]> { return request('/api/targets') }
+export function saveTarget(type: TargetType, target_value: number): Promise<AcademicTarget> { return request(`/api/targets/${type}`, { method: 'PUT', body: { target_value } }) }
+export function deleteTarget(type: TargetType): Promise<void> { return request(`/api/targets/${type}`, { method: 'DELETE' }) }
+export function getScenarios(): Promise<SavedScenario[]> { return request('/api/scenarios') }
+export function previewScenario(assessments: ScenarioAssessment[]): Promise<ScenarioProjection> { return request('/api/scenarios/preview', { method: 'POST', body: { assessments } }) }
+export function createScenario(input: { title: string; assessments: ScenarioAssessment[]; notes?: string }): Promise<SavedScenario> { return request('/api/scenarios', { method: 'POST', body: input }) }
+export function updateScenario(id: number, input: Partial<{ title: string; assessments: ScenarioAssessment[]; notes: string | null }>): Promise<SavedScenario> { return request(`/api/scenarios/${id}`, { method: 'PATCH', body: input }) }
+export function deleteScenario(id: number): Promise<void> { return request(`/api/scenarios/${id}`, { method: 'DELETE' }) }
+export function compareScenarios(ids: number[]): Promise<{ scenarios: SavedScenario[] }> { return request('/api/scenarios/compare', { method: 'POST', body: { scenario_ids: ids } }) }
 
 export function sendAiChat(message: string, conversationId?: number | null): Promise<ChatResponse> {
   return request<ChatResponse>('/api/ai/chat', {

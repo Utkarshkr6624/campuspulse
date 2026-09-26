@@ -20,4 +20,7 @@ def login_student(db: Session, data: LoginRequest) -> AuthResponse:
 
 
 def _auth_response(student: Student) -> AuthResponse:
-    return AuthResponse(access_token=create_access_token(student.id), student=student)
+    return AuthResponse(
+        access_token=create_access_token(student.id, student.token_version),
+        student=student,
+    )

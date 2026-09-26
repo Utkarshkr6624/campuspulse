@@ -1,6 +1,6 @@
 import { clearToken, getToken } from './session.ts'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL?.trim() || (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '')).replace(/\/$/, '')
 
 export class ApiError extends Error {
   status: number
@@ -19,6 +19,9 @@ type RequestOptions = {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new ApiError(0, 'CampusPulse API is not configured. Set VITE_API_BASE_URL to the backend URL in the deployment environment.')
+  }
   const headers = new Headers()
   if (options.body !== undefined && !options.formData) {
     headers.set('Content-Type', 'application/json')

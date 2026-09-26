@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Alert } from './ui/Alert.tsx'
 import { EmptyState } from './ui/EmptyState.tsx'
+import { LoadingState } from './ui/LoadingState.tsx'
 
 type QueryStateProps<T> = {
   data: T[] | null
@@ -26,11 +27,7 @@ export function QueryState<T>({
   children,
 }: QueryStateProps<T>) {
   if (loading) {
-    return (
-      <p className="text-sm text-[var(--cp-muted)]" role="status">
-        {loadingLabel}
-      </p>
-    )
+    return <LoadingState label={loadingLabel} />
   }
 
   if (error) {

@@ -10,6 +10,7 @@ class CourseCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     credits: int = Field(ge=1, le=40)
     grading_scheme_id: int | None = None
+    semester_id: int | None = None
 
     @field_validator("code", mode="before")
     @classmethod
@@ -47,5 +48,6 @@ class CourseRead(BaseModel):
     title: str
     credits: int
     grading_scheme_id: int | None
+    owner_id: int | None = None
     created_at: datetime
     updated_at: datetime

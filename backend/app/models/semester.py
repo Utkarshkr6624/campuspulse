@@ -23,6 +23,9 @@ class Semester(TimestampMixin, Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
     number: Mapped[int] = mapped_column(Integer)
     is_current: Mapped[bool] = mapped_column(default=False, index=True)
+    academic_year: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    recorded_sgpa: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recorded_credits: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     student: Mapped["Student"] = relationship(back_populates="semesters")
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="semester_record")

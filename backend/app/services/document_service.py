@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+import logging
 from pathlib import Path
 
 from sqlalchemy import delete, func, select
@@ -24,6 +25,8 @@ from app.schemas.document import (
 from app.services import document_chunker, document_extractor
 from app.services.document_extractor import ExtractionError
 from app.storage import get_storage
+
+logger = logging.getLogger(__name__)
 
 
 def list_documents(
@@ -154,11 +157,13 @@ def process_document(db: Session, document_id: int) -> Document:
         commit_or_conflict(db, "Document chunks could not be saved.")
     except ExtractionError as exc:
         document.processing_status = ProcessingStatus.FAILED.value
-        document.processing_error = exc.detail
+        document.processing_error = "Document processing failed. Check the file format and contents."
+        logger.info("Document extraction failed for document_id=%s: %s", document_id, exc.detail)
         commit_or_conflict(db, "Document failure status could not be saved.")
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         document.processing_status = ProcessingStatus.FAILED.value
-        document.processing_error = f"Processing failed: {exc}"
+        document.processing_error = "Document processing failed due to an internal error."
+        logger.exception("Unexpected document processing failure for document_id=%s", document_id)
         commit_or_conflict(db, "Document failure status could not be saved.")
     return get_document(db, document_id)
 

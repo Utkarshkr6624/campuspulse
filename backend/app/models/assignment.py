@@ -1,6 +1,6 @@
 from datetime import date, time
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text, Time
+from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.assignment_enums import ASSIGNMENT_PRIORITY_VALUES, ASSIGNMENT_STATUS_VALUES
@@ -16,6 +16,10 @@ class Assignment(TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint(f"status IN ({_status_values})", name="ck_assignment_status"),
         CheckConstraint(f"priority IN ({_priority_values})", name="ck_assignment_priority"),
+        UniqueConstraint(
+            "student_id", "course_id", "title", "due_date",
+            name="uq_assignment_student_course_title_due_date",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

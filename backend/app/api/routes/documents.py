@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_admin, get_current_student
 from app.core.document_enums import DocumentCategory, ProcessingStatus
+from app.core.config import settings
 from app.core.exceptions import BadRequestError
 from app.db.session import get_db
 from app.models.student import Student
@@ -86,7 +87,14 @@ async def upload_document(
 ) -> DocumentRead:
     if file.filename is None:
         raise BadRequestError("A file is required.")
-    data = await file.read()
+    try:
+        data = await file.read(settings.document_max_upload_bytes + 1)
+    finally:
+        await file.close()
+    if len(data) > settings.document_max_upload_bytes:
+        raise BadRequestError(
+            f"File exceeds the maximum size of {settings.document_max_upload_bytes} bytes."
+        )
     meta = DocumentCreateMeta(title=title, description=description, category=category)
     return document_service.upload_document(
         db,

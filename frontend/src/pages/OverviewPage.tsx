@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge.tsx'
 import { Button } from '../components/ui/Button.tsx'
 import { Card, CardTitle } from '../components/ui/Card.tsx'
 import { EmptyState } from '../components/ui/EmptyState.tsx'
-import { ProgressBar } from '../components/ui/ProgressBar.tsx'
+import { GpaHistoryLineChart } from '../components/charts/AnalyticsCharts.tsx'
 import { ASSIGNMENT_PRIORITY_LABELS, ASSIGNMENT_STATUS_LABELS } from '../constants/assignmentEnums.ts'
 import { assessmentLabel } from '../constants/assessmentTypes.ts'
 import { examTypeLabel } from '../constants/examTypes.ts'
@@ -54,6 +54,7 @@ export function OverviewPage() {
   const [insights, setInsights] = useState<AcademicInsight[]>([])
   const [intelligence, setIntelligence] = useState<AcademicIntelligence | null>(null)
   const [hasSemesterSetup, setHasSemesterSetup] = useState<boolean | null>(null)
+  const [currentSemesterNumber, setCurrentSemesterNumber] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +79,7 @@ export function OverviewPage() {
         setAssignments(nextAssignments)
         setInsights(nextInsights.insights.slice(0, 3))
         setHasSemesterSetup(nextSemesters.length > 0)
+        setCurrentSemesterNumber(nextSemesters.find((item) => item.is_current)?.number ?? null)
         setIntelligence(nextIntelligence)
       })
       .catch((caught: unknown) => {
@@ -111,10 +113,29 @@ export function OverviewPage() {
 
   return (
     <section className="space-y-8">
-      <p className="text-sm leading-6 text-[var(--cp-muted)]">
-        Your academic snapshot for CampusPulse. Figures come from attendance, marks, exams, and
-        assignments.
-      </p>
+      <section className="relative overflow-hidden rounded-[1.35rem] bg-[var(--cp-brand)] px-6 py-7 text-white shadow-[var(--cp-shadow)] sm:px-8 sm:py-8" aria-labelledby="overview-welcome">
+        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="max-w-2xl">
+            <p className="cp-kicker !text-[var(--cp-accent)]">Your academic workspace</p>
+            <h2 id="overview-welcome" className="mt-3 text-2xl font-semibold tracking-[-0.04em] sm:text-3xl">
+              {student ? `Good to see you, ${student.full_name.split(' ')[0]}.` : 'Your academic picture, in focus.'}
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
+              {currentSemesterNumber
+                ? `Semester ${currentSemesterNumber} · A calm place to understand your progress and plan what comes next.`
+                : 'A calm place to understand your progress and plan what comes next.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {hasSemesterSetup === false ? <Button variant="secondary" onClick={() => navigate('/semesters')}>Set up semesters</Button> : null}
+            <Button className="!border !border-white/20 !bg-white/10 !text-white hover:!bg-white/15" onClick={() => navigate('/assistant')}>
+              Ask CampusPulse
+            </Button>
+          </div>
+        </div>
+        <div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-24 h-72 w-72 rounded-full border border-white/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-16 h-56 w-56 rounded-full border border-white/10" />
+      </section>
 
       {error ? <Alert>{error}</Alert> : null}
       {loading ? (
@@ -123,118 +144,56 @@ export function OverviewPage() {
         </p>
       ) : null}
 
-      {!loading && hasSemesterSetup === false ? (
-        <Card className="flex flex-wrap items-center justify-between gap-4 border-[var(--cp-brand)]/20 bg-blue-50/40">
-          <div>
-            <CardTitle>Set up your academic profile</CardTitle>
-            <p className="mt-1 text-sm text-[var(--cp-muted)]">Choose your current semester and optionally add previous course results to build your academic history.</p>
-          </div>
-          <Button onClick={() => navigate('/semesters')}>Set up semesters</Button>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
+      <Card padded={false} className="overflow-hidden">
+        <div className="grid divide-y divide-[var(--cp-border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+        <div className="p-5 sm:p-6">
           <CardTitle>Current GPA</CardTitle>
-          <p className="mt-4 text-2xl font-semibold text-[var(--cp-ink)]">
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[var(--cp-ink)]">
             {metricValue(academic?.gpa.value)}
           </p>
-          <p className="mt-2 text-sm text-[var(--cp-muted)]">
-            {academic?.gpa.message ?? 'Credit-weighted semester GPA from completed courses.'}
-          </p>
-        </Card>
-        <Card>
+          <p className="mt-1.5 text-xs text-[var(--cp-muted)]">{currentSemesterNumber ? `Semester ${currentSemesterNumber}` : 'Current semester'}</p>
+        </div>
+        <div className="p-5 sm:p-6">
           <CardTitle>CGPA</CardTitle>
-          <p className="mt-4 text-2xl font-semibold text-[var(--cp-ink)]">
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[var(--cp-ink)]">
             {metricValue(academic?.cgpa.value)}
           </p>
-          <p className="mt-2 text-sm text-[var(--cp-muted)]">
-            {academic?.cgpa.message ?? 'Credit-weighted cumulative GPA across completed courses.'}
-          </p>
-        </Card>
-        <Card>
-          <CardTitle>Courses enrolled</CardTitle>
-          <p className="mt-4 text-2xl font-semibold text-[var(--cp-ink)]">{academic?.enrolled_courses ?? 0}</p>
-          <p className="mt-2 text-sm text-[var(--cp-muted)]">
-            {(academic?.enrolled_courses ?? 0) === 0
-              ? 'Enroll in a course to start tracking marks.'
-              : `${academic?.completed_courses ?? 0} with complete weighted assessments.`}
-          </p>
-        </Card>
-        <Card>
+          <p className="mt-1.5 text-xs text-[var(--cp-muted)]">Cumulative performance</p>
+        </div>
+        <div className="p-5 sm:p-6">
           <CardTitle>Overall attendance</CardTitle>
-          <p className="mt-4 text-2xl font-semibold text-[var(--cp-ink)]">
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[var(--cp-ink)]">
             {metricValue(attendance?.attendance_percentage, '%')}
           </p>
-          <p className="mt-2 text-sm text-[var(--cp-muted)]">
+          <p className="mt-1.5 text-xs text-[var(--cp-muted)]">
             {(attendance?.total_classes ?? 0) === 0
               ? 'No attendance has been recorded yet.'
               : `${attendance?.attended_classes}/${attendance?.total_classes} classes attended.`}
           </p>
-          {(attendance?.total_classes ?? 0) > 0 ? (
-            <div className="mt-4">
-              <ProgressBar value={attendance?.attendance_percentage ?? null} />
-            </div>
-          ) : null}
+        </div>
+        <div className="p-5 sm:p-6">
+          <CardTitle>Credits completed</CardTitle>
+          <p className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[var(--cp-ink)]">{intelligence?.completed_credits ?? 0}</p>
+          <p className="mt-1.5 text-xs text-[var(--cp-muted)]">Across available academic history</p>
+        </div>
+        </div>
+      </Card>
+
+      <div className="grid gap-5 xl:grid-cols-[1.35fr_0.85fr]">
+        <Card className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div><CardTitle>Semester trajectory</CardTitle><p className="mt-1 text-xs text-[var(--cp-muted)]">SGPA by completed academic period</p></div>
+            <Link className="text-xs font-semibold text-[var(--cp-brand)] hover:underline" to="/analytics">Full analysis <span aria-hidden="true">→</span></Link>
+          </div>
+          {intelligence?.semester_trend.some((item) => item.sgpa !== null) ? (
+            <GpaHistoryLineChart data={intelligence.semester_trend.filter((item) => item.sgpa !== null).map((item) => ({ semester: `Sem ${item.semester_number}`, gpa: item.sgpa as number }))} />
+          ) : <p className="rounded-[var(--cp-radius-sm)] bg-[var(--cp-surface-raised)] px-4 py-5 text-sm leading-6 text-[var(--cp-muted)]">Add semester results to build your academic trajectory. Available grades and course data remain below.</p>}
+        </Card>
+        <Card className="space-y-4">
+          <div className="flex items-start justify-between gap-3"><div><CardTitle>Academic signals</CardTitle><p className="mt-1 text-xs text-[var(--cp-muted)]">Observations from your records</p></div><Link className="text-xs font-semibold text-[var(--cp-brand)] hover:underline" to="/analytics">View all</Link></div>
+          {insights.length ? <ul className="divide-y divide-[var(--cp-border)]">{insights.slice(0, 3).map((insight) => <li key={insight.id} className="py-3 first:pt-0"><div className="flex items-start gap-2"><span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${insight.severity === 'CRITICAL' ? 'bg-red-500' : insight.severity === 'WARNING' ? 'bg-amber-500' : 'bg-[var(--cp-success)]'}`} /><p className="text-sm leading-6 text-[var(--cp-ink)]">{insight.message}</p></div></li>)}</ul> : <p className="text-sm leading-6 text-[var(--cp-muted)]">No notable signals yet. As you add marks and attendance, measurable observations will appear here.</p>}
         </Card>
       </div>
-
-      {!loading && intelligence && intelligence.data_status !== 'empty' ? (
-        <Card className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <CardTitle>Performance snapshot</CardTitle>
-            <p className="mt-1 text-sm text-[var(--cp-muted)]">
-              SGPA {metricValue(intelligence.current_sgpa)}
-              {intelligence.sgpa_change !== null
-                ? ` · ${intelligence.sgpa_change > 0 ? '+' : ''}${intelligence.sgpa_change} from previous semester`
-                : ` · ${intelligence.message ?? 'Semester trend is still building'}`}
-              {` · ${intelligence.completed_credits} completed credits`}
-            </p>
-          </div>
-          <Link className="text-sm font-semibold text-[var(--cp-brand)] underline-offset-2 hover:underline" to="/analytics">
-            View performance analysis
-          </Link>
-        </Card>
-      ) : null}
-
-      <Card className="space-y-4">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <CardTitle>Academic insights</CardTitle>
-            <p className="mt-1 text-sm text-[var(--cp-muted)]">Top signals from your current data.</p>
-          </div>
-          <Link
-            className="text-sm font-semibold text-[var(--cp-brand)] underline-offset-2 hover:underline"
-            to="/analytics"
-          >
-            Open analytics
-          </Link>
-        </div>
-        {insights.length === 0 ? (
-          <p className="text-sm text-[var(--cp-muted)]">
-            No notable insights yet. Add marks, attendance, or deadlines to generate them.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {insights.map((insight) => (
-              <li
-                key={insight.id}
-                className="flex flex-col gap-2 border-t border-[var(--cp-border)] pt-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="text-sm text-[var(--cp-ink)]">{insight.message}</p>
-                {insight.navigation_target ? (
-                  <Link
-                    className="shrink-0 text-sm font-semibold text-[var(--cp-brand)] underline-offset-2 hover:underline"
-                    to={insight.navigation_target}
-                  >
-                    View
-                  </Link>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="space-y-4">

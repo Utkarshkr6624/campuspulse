@@ -6,6 +6,7 @@ export type Student = {
   email: string
   university_id: string
   role: UserRole
+  official_cgpa: number | null
   created_at: string
   updated_at: string
 }
@@ -16,6 +17,7 @@ export type Course = {
   title: string
   credits: number
   grading_scheme_id: number | null
+  owner_id: number | null
   created_at: string
   updated_at: string
 }
@@ -47,6 +49,9 @@ export type SemesterCourse = {
 export type Semester = {
   id: number
   number: number
+  academic_year: string | null
+  recorded_sgpa: number | null
+  recorded_credits: number
   status: 'PREVIOUS' | 'CURRENT' | 'UPCOMING'
   is_current: boolean
   course_count: number
@@ -79,14 +84,7 @@ export type CourseSummary = {
   credits: number
 }
 
-export type AssessmentType =
-  | 'CAT1'
-  | 'CAT2'
-  | 'FAT'
-  | 'INTERNAL'
-  | 'LAB'
-  | 'ASSIGNMENT'
-  | 'OTHER'
+export type AssessmentType = string
 
 export type CourseMark = {
   id: number

@@ -17,6 +17,7 @@ import {
   getCourses,
   getEnrollments,
   getMarks,
+  getSemesters,
   updateMark,
 } from '../services/api.ts'
 import { ApiError } from '../services/http.ts'
@@ -26,6 +27,7 @@ import type {
   CourseMark,
   CoursePerformance,
   Enrollment,
+  Semester,
 } from '../types/entities.ts'
 
 type EditorState =
@@ -39,13 +41,18 @@ export function MarksPage() {
   const [marks, setMarks] = useState<CourseMark[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [semesters, setSemesters] = useState<Semester[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState<EditorState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [courseId, setCourseId] = useState('')
+  const [semesterId, setSemesterId] = useState('')
   const [assessmentType, setAssessmentType] = useState<AssessmentType>('CAT1')
+  const [customAssessmentName, setCustomAssessmentName] = useState('')
   const [marksObtained, setMarksObtained] = useState('')
   const [maximumMarks, setMaximumMarks] = useState('')
   const [assessmentDate, setAssessmentDate] = useState('')
@@ -54,18 +61,21 @@ export function MarksPage() {
     setLoading(true)
     setError(null)
     try {
-      const [nextPerformances, nextSummary, nextMarks, nextCourses, nextEnrollments] = await Promise.all([
+      const [nextPerformances, nextSummary, nextMarks, nextCourses, nextEnrollments, nextSemesters] = await Promise.all([
         getAcademicCourses(),
         getAcademicSummary(),
         getMarks(),
         getCourses(),
         getEnrollments(),
+        getSemesters(),
       ])
       setPerformances(nextPerformances)
       setSummary(nextSummary)
       setMarks(nextMarks)
       setCourses(nextCourses)
       setEnrollments(nextEnrollments)
+      setSemesters(nextSemesters)
+      setSemesterId((previous) => previous || String(nextSemesters.find((item) => item.is_current)?.id ?? nextSemesters[0]?.id ?? ''))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load marks.')
     } finally {
@@ -81,8 +91,11 @@ export function MarksPage() {
     const enrolledIds = new Set(
       enrollments.filter((item) => item.status === 'enrolled').map((item) => item.course_id),
     )
-    return courses.filter((course) => enrolledIds.has(course.id))
-  }, [courses, enrollments])
+    const selectedEnrollmentIds = new Set(
+      enrollments.filter((item) => item.status === 'enrolled' && (!semesterId || item.semester_id === Number(semesterId))).map((item) => item.course_id),
+    )
+    return courses.filter((course) => enrolledIds.has(course.id) && selectedEnrollmentIds.has(course.id))
+  }, [courses, enrollments, semesterId])
 
   const marksByKey = useMemo(() => {
     const map = new Map<string, CourseMark>()
@@ -94,8 +107,10 @@ export function MarksPage() {
 
   function openCreate() {
     setFormError(null)
+    setSuccess(null)
     setCourseId(enrolledCourses[0] ? String(enrolledCourses[0].id) : '')
     setAssessmentType('CAT1')
+    setCustomAssessmentName('')
     setMarksObtained('')
     setMaximumMarks('')
     setAssessmentDate('')
@@ -105,7 +120,9 @@ export function MarksPage() {
   function openEdit(mark: CourseMark) {
     setFormError(null)
     setCourseId(String(mark.course_id))
-    setAssessmentType(mark.assessment_type)
+    setSemesterId(String(enrollments.find((item) => item.course_id === mark.course_id)?.semester_id ?? ''))
+    setAssessmentType(ASSESSMENT_TYPES.includes(mark.assessment_type as (typeof ASSESSMENT_TYPES)[number]) ? mark.assessment_type : 'CUSTOM')
+    setCustomAssessmentName(ASSESSMENT_TYPES.includes(mark.assessment_type as (typeof ASSESSMENT_TYPES)[number]) ? '' : assessmentLabel(mark.assessment_type))
     setMarksObtained(String(mark.marks_obtained))
     setMaximumMarks(String(mark.maximum_marks))
     setAssessmentDate(mark.assessment_date ?? '')
@@ -120,6 +137,11 @@ export function MarksPage() {
     setFormError(null)
     const obtained = Number(marksObtained)
     const maximum = Number(maximumMarks)
+    const assessmentName = assessmentType === 'CUSTOM' ? customAssessmentName.trim() : assessmentType
+    if (!assessmentName) {
+      setFormError('Enter an assessment name.')
+      return
+    }
     if (!Number.isFinite(obtained) || !Number.isFinite(maximum)) {
       setFormError('Enter valid numeric marks.')
       return
@@ -142,19 +164,20 @@ export function MarksPage() {
         }
         await createMark({
           course_id: Number(courseId),
-          assessment_type: assessmentType,
+          assessment_type: assessmentName,
           marks_obtained: obtained,
           maximum_marks: maximum,
           assessment_date: assessmentDate || null,
         })
       } else {
         await updateMark(editor.mark.id, {
-          assessment_type: assessmentType,
+          assessment_type: assessmentName,
           marks_obtained: obtained,
           maximum_marks: maximum,
           assessment_date: assessmentDate || null,
         })
       }
+      setSuccess(editor.mode === 'create' ? 'Marks saved successfully.' : 'Marks updated successfully.')
       setEditor(null)
       await load()
     } catch (caught) {
@@ -171,11 +194,16 @@ export function MarksPage() {
     if (!confirmed) {
       return
     }
+    setSuccess(null)
     try {
+      setDeletingId(mark.id)
       await deleteMark(mark.id)
+      setSuccess('Mark deleted successfully.')
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete mark.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -194,6 +222,7 @@ export function MarksPage() {
       </div>
 
       {error ? <Alert>{error}</Alert> : null}
+      {success ? <p role="status" className="text-sm font-medium text-[var(--cp-success)]">{success}</p> : null}
       {loading ? (
         <p className="text-sm text-[var(--cp-muted)]" role="status">
           Loading marks
@@ -231,7 +260,14 @@ export function MarksPage() {
 
       {!loading && performances.length > 0 ? (
         <div className="space-y-4">
-          {performances.map((course) => (
+          {performances.map((course) => {
+            const rawMarks = marks.filter((mark) => mark.course_id === course.course.id)
+            const weightedByType = new Map(course.assessments.map((item) => [item.assessment_type, item]))
+            const assessmentTypes = Array.from(new Set([
+              ...course.assessments.map((item) => item.assessment_type),
+              ...rawMarks.map((item) => item.assessment_type),
+            ]))
+            return (
             <Card key={course.course.id} className="overflow-hidden p-0">
               <div className="flex flex-col gap-3 border-b border-[var(--cp-border)] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -278,33 +314,34 @@ export function MarksPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {course.assessments.length === 0 ? (
+                    {assessmentTypes.length === 0 ? (
                       <tr>
                         <td className="px-5 py-4 text-[var(--cp-muted)]" colSpan={5}>
                           No assessments recorded for this course yet.
                         </td>
                       </tr>
                     ) : (
-                      course.assessments.map((item) => {
-                        const mark = marksByKey.get(`${course.course.id}:${item.assessment_type}`)
+                      assessmentTypes.map((type) => {
+                        const item = weightedByType.get(type)
+                        const mark = marksByKey.get(`${course.course.id}:${type}`)
                         return (
-                          <tr key={item.assessment_type} className="border-t border-[var(--cp-border)]">
+                          <tr key={type} className="border-t border-[var(--cp-border)]">
                             <td className="px-5 py-3 font-medium text-[var(--cp-ink)]">
-                              {assessmentLabel(item.assessment_type)}
+                              {assessmentLabel(type)}
                             </td>
                             <td className="px-5 py-3 text-slate-700">
-                              {item.marks_obtained}/{item.maximum_marks}
+                              {mark ? `${mark.marks_obtained}/${mark.maximum_marks}` : item ? `${item.marks_obtained}/${item.maximum_marks}` : '—'}
                             </td>
-                            <td className="px-5 py-3 text-slate-700">{item.weight_percent}%</td>
-                            <td className="px-5 py-3 text-slate-700">{item.weighted_contribution}</td>
+                            <td className="px-5 py-3 text-slate-700">{item ? `${item.weight_percent}%` : 'Not configured'}</td>
+                            <td className="px-5 py-3 text-slate-700">{item ? item.weighted_contribution : '—'}</td>
                             <td className="px-5 py-3">
                               {mark ? (
                                 <div className="flex flex-wrap gap-2">
-                                  <Button size="sm" variant="secondary" onClick={() => openEdit(mark)}>
+                                  <Button size="sm" variant="secondary" disabled={deletingId === mark.id} onClick={() => openEdit(mark)}>
                                     Edit
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => void handleDelete(mark)}>
-                                    Delete
+                                  <Button size="sm" variant="ghost" disabled={deletingId === mark.id} onClick={() => void handleDelete(mark)}>
+                                    {deletingId === mark.id ? 'Deleting…' : 'Delete'}
                                   </Button>
                                 </div>
                               ) : (
@@ -319,7 +356,8 @@ export function MarksPage() {
                 </table>
               </div>
             </Card>
-          ))}
+            )
+          })}
         </div>
       ) : null}
 
@@ -341,6 +379,22 @@ export function MarksPage() {
         <form id="mark-form" className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
           {editor?.mode === 'create' ? (
             <SelectField
+              label="Semester"
+              name="semester_id"
+              value={semesterId}
+              required
+              onChange={(event) => {
+                setSemesterId(event.target.value)
+                const next = enrollments.find((item) => item.status === 'enrolled' && item.semester_id === Number(event.target.value))
+                setCourseId(next ? String(next.course_id) : '')
+              }}
+            >
+              <option value="" disabled>Select a semester</option>
+              {semesters.map((semester) => <option key={semester.id} value={semester.id}>Semester {semester.number}{semester.is_current ? ' · Current' : ''}</option>)}
+            </SelectField>
+          ) : null}
+          {editor?.mode === 'create' ? (
+            <SelectField
               label="Course"
               name="course_id"
               value={courseId}
@@ -355,6 +409,7 @@ export function MarksPage() {
                   {course.code} · {course.title}
                 </option>
               ))}
+              {enrolledCourses.length === 0 ? <option value="" disabled>No enrolled courses in this semester</option> : null}
             </SelectField>
           ) : (
             <p className="text-sm text-[var(--cp-muted)]">
@@ -365,14 +420,16 @@ export function MarksPage() {
             label="Assessment type"
             name="assessment_type"
             value={assessmentType}
-            onChange={(event) => setAssessmentType(event.target.value as AssessmentType)}
+            onChange={(event) => setAssessmentType(event.target.value)}
           >
             {ASSESSMENT_TYPES.map((type) => (
               <option key={type} value={type}>
                 {assessmentLabel(type)}
               </option>
             ))}
+            <option value="CUSTOM">Custom assessment…</option>
           </SelectField>
+          {assessmentType === 'CUSTOM' ? <TextField label="Assessment name" name="custom_assessment_name" value={customAssessmentName} onChange={(event) => setCustomAssessmentName(event.target.value)} required maxLength={64} placeholder="Mid Semester Examination" /> : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               label="Marks obtained"
@@ -403,6 +460,7 @@ export function MarksPage() {
             onChange={(event) => setAssessmentDate(event.target.value)}
           />
           {formError ? <Alert>{formError}</Alert> : null}
+          <p className="text-xs text-[var(--cp-muted)]">The configured grading scheme decides which assessment types contribute to course results. Other saved assessment names remain visible but do not affect GPA until configured.</p>
         </form>
       </Modal>
     </section>

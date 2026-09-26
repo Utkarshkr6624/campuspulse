@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { Alert } from '../components/ui/Alert.tsx'
 import { Badge } from '../components/ui/Badge.tsx'
 import { Button } from '../components/ui/Button.tsx'
@@ -36,10 +37,12 @@ export function AttendancePage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState<EditorState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [courseId, setCourseId] = useState('')
   const [attendanceDate, setAttendanceDate] = useState('')
   const [status, setStatus] = useState<AttendanceStatusOption>('present')
@@ -96,6 +99,7 @@ export function AttendancePage() {
       return
     }
     setFormError(null)
+    setSuccess(null)
     setSubmitting(true)
     try {
       if (editor.mode === 'create') {
@@ -114,6 +118,7 @@ export function AttendancePage() {
           status,
         })
       }
+      setSuccess(editor.mode === 'create' ? 'Attendance recorded successfully.' : 'Attendance updated successfully.')
       setEditor(null)
       await load()
     } catch (caught) {
@@ -131,10 +136,14 @@ export function AttendancePage() {
       return
     }
     try {
+      setDeletingId(record.id)
       await deleteAttendance(record.id)
+      setSuccess('Attendance record deleted.')
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete attendance.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -147,12 +156,11 @@ export function AttendancePage() {
             Record class sessions by date. Totals and percentages are calculated from those records.
           </p>
         </div>
-        <Button onClick={openCreate} disabled={enrolledCourses.length === 0 && !loading}>
-          Add attendance
-        </Button>
+        <div className="flex flex-wrap gap-2"><Link to="/assistant" state={{ prompt: 'Where is my attendance at risk based on the configured threshold?' }} className="inline-flex min-h-10 items-center rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-white px-3.5 text-xs font-semibold text-[var(--cp-ink)] hover:bg-[var(--cp-brand-wash)]">Ask about attendance</Link><Button onClick={openCreate} disabled={enrolledCourses.length === 0 && !loading}>Add attendance</Button></div>
       </div>
 
       {error ? <Alert>{error}</Alert> : null}
+      {success ? <p role="status" className="text-sm font-medium text-[var(--cp-success)]">{success}</p> : null}
       {loading ? (
         <p className="text-sm text-[var(--cp-muted)]" role="status">
           Loading attendance
@@ -233,11 +241,11 @@ export function AttendancePage() {
                             <td className="py-3 pr-4 capitalize text-slate-700">{record.status}</td>
                             <td className="py-3">
                               <div className="flex flex-wrap gap-2">
-                                <Button size="sm" variant="secondary" onClick={() => openEdit(record)}>
+                                <Button size="sm" variant="secondary" disabled={deletingId === record.id} onClick={() => openEdit(record)}>
                                   Edit
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => void handleDelete(record)}>
-                                  Delete
+                                <Button size="sm" variant="ghost" disabled={deletingId === record.id} onClick={() => void handleDelete(record)}>
+                                  {deletingId === record.id ? 'Deleting…' : 'Delete'}
                                 </Button>
                               </div>
                             </td>

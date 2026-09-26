@@ -237,6 +237,98 @@ def test_ai_missing_data_honesty(client, auth_headers):
     assert "enough" in response.json()["answer"].lower() or "don't" in response.json()["answer"].lower() or "gpa" in response.json()["answer"].lower()
 
 
+def test_ai_what_if_uses_gpa_calculator_and_target_response(client, auth_headers):
+    headers, _ = auth_headers("ai-what-if")
+    semesters = client.post(
+        "/api/semesters/setup",
+        headers=headers,
+        json={"current_semester": 2},
+    )
+    assert semesters.status_code == 200, semesters.text
+    history = client.post(
+        f"/api/semesters/{semesters.json()[0]['id']}/courses",
+        headers=headers,
+        json={"courses": [{"course_name": "Foundations", "course_code": "CS101", "credits": 3, "grade": "A"}]},
+    )
+    assert history.status_code == 201, history.text
+    created = client.post(
+        "/api/courses",
+        headers=headers,
+        json={"code": "AI301", "title": "Data Systems", "credits": 3},
+    )
+    assert created.status_code == 201, created.text
+    course = created.json()
+    enrolled = client.post(
+        "/api/enrollments",
+        headers=headers,
+        json={"course_id": course["id"], "semester": "Current"},
+    )
+    assert enrolled.status_code == 201, enrolled.text
+
+    scenario = client.post(
+        "/api/ai/chat",
+        headers=headers,
+        json={"message": "If I get A in AI301, what happens to my SGPA?"},
+    )
+    assert scenario.status_code == 200, scenario.text
+    assert "simulate_gpa" in scenario.json()["tools_used"]
+    assert "projected semester GPA" in scenario.json()["answer"]
+    assert "AI301: A" in scenario.json()["answer"]
+
+    course_analysis = client.post(
+        "/api/ai/chat",
+        headers=headers,
+        json={"message": "Explain my performance in AI301 (Data Systems)."},
+    )
+    assert course_analysis.status_code == 200, course_analysis.text
+    assert "AI301" in course_analysis.json()["answer"]
+    assert "Data Systems" in course_analysis.json()["answer"]
+
+    cgpa_scenario = client.post(
+        "/api/ai/chat",
+        headers=headers,
+        json={"message": "If I get S in AI301, how would my CGPA change?"},
+    )
+    assert cgpa_scenario.status_code == 200, cgpa_scenario.text
+    assert "Projected CGPA: 9.5" in cgpa_scenario.json()["answer"]
+
+    target = client.post(
+        "/api/ai/chat",
+        headers=headers,
+        json={"message": "What grades do I need to reach 8 SGPA?"},
+    )
+    assert target.status_code == 200, target.text
+    assert "simulate_gpa" in target.json()["tools_used"]
+    assert "same grade" in target.json()["answer"] or "already meets" in target.json()["answer"]
+
+
+def test_ai_semester_prompt_focuses_on_requested_history(client, auth_headers):
+    headers, _ = auth_headers("ai-semester-focus")
+    setup = client.post(
+        "/api/semesters/setup",
+        headers=headers,
+        json={"current_semester": 2},
+    )
+    assert setup.status_code == 200, setup.text
+    semester_one_id = setup.json()[0]["id"]
+    added = client.post(
+        f"/api/semesters/{semester_one_id}/courses",
+        headers=headers,
+        json={"courses": [{"course_name": "Foundations", "course_code": "CS101", "credits": 3, "grade": "A"}]},
+    )
+    assert added.status_code == 201, added.text
+
+    response = client.post(
+        "/api/ai/chat",
+        headers=headers,
+        json={"message": "Analyze my results for Semester 1."},
+    )
+    assert response.status_code == 200, response.text
+    assert "get_academic_intelligence" in response.json()["tools_used"]
+    assert "Semester 1 summary" in response.json()["answer"]
+    assert "CS101" in response.json()["answer"]
+
+
 def test_conversation_delete_ownership(client, auth_headers):
     headers_a, _ = auth_headers("ai8")
     headers_b, _ = auth_headers("ai9")

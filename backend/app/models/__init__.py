@@ -9,10 +9,12 @@ from app.models.exam import Exam
 from app.models.grading import AssessmentWeight, GradeBand, GradingScheme
 from app.models.semester import Semester, SemesterCourse
 from app.models.student import Student
+from app.models.planning import AcademicTarget, WhatIfScenario
 
 __all__ = [
     "AssessmentWeight",
     "Assignment",
+    "AcademicTarget",
     "AttendanceRecord",
     "Conversation",
     "Course",
@@ -27,4 +29,5 @@ __all__ = [
     "Semester",
     "SemesterCourse",
     "Student",
+    "WhatIfScenario",
 ]

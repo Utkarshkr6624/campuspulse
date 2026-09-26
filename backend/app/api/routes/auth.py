@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_student
 from app.db.session import get_db
 from app.models.student import Student
-from app.schemas.student import AuthResponse, LoginRequest, StudentCreate, StudentRead
+from app.schemas.student import AcademicProfileUpdate, AuthResponse, LoginRequest, StudentCreate, StudentRead
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -21,10 +21,24 @@ def login(data: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(_student: Student = Depends(get_current_student)) -> Response:
+def logout(student: Student = Depends(get_current_student), db: Session = Depends(get_db)) -> Response:
+    student.token_version += 1
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=StudentRead)
 def current_student(student: Student = Depends(get_current_student)) -> Student:
+    return student
+
+
+@router.patch("/academic-profile", response_model=StudentRead)
+def update_academic_profile(
+    data: AcademicProfileUpdate,
+    student: Student = Depends(get_current_student),
+    db: Session = Depends(get_db),
+) -> Student:
+    student.official_cgpa = data.official_cgpa
+    db.commit()
+    db.refresh(student)
     return student

@@ -6,9 +6,16 @@ export const ASSESSMENT_TYPES = [
   'LAB',
   'ASSIGNMENT',
   'OTHER',
+  'MIDTERM',
+  'QUIZ',
+  'UNIT_TEST',
+  'END_SEMESTER',
+  'PRACTICAL',
+  'PROJECT',
+  'VIVA',
 ] as const
 
-export type AssessmentType = (typeof ASSESSMENT_TYPES)[number]
+export type AssessmentType = string
 
 export const ASSESSMENT_TYPE_LABELS: Record<AssessmentType, string> = {
   CAT1: 'CAT 1',
@@ -24,5 +31,5 @@ export function assessmentLabel(type: string): string {
   if (type in ASSESSMENT_TYPE_LABELS) {
     return ASSESSMENT_TYPE_LABELS[type as AssessmentType]
   }
-  return type
+  return type.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())
 }

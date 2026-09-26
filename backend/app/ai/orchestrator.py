@@ -62,7 +62,11 @@ class ChatOrchestrator:
         plan = plan_tools(cleaned)
         results: list[ToolResult] = []
         for tool in plan.tools:
-            query = plan.document_query if tool == ToolName.SEARCH_UNIVERSITY_DOCUMENTS else None
+            query = (
+                plan.document_query
+                if tool == ToolName.SEARCH_UNIVERSITY_DOCUMENTS
+                else cleaned if tool == ToolName.SIMULATE_GPA else None
+            )
             results.append(self.tools.run(tool, query=query))
 
         sources = extract_sources(results)
@@ -132,11 +136,11 @@ def _build_context_message(results: list[ToolResult], sources: list[SourceRef]) 
             tool_payload.append({"tool": result.name.value, "error": result.error})
             continue
         if result.name == ToolName.SEARCH_UNIVERSITY_DOCUMENTS:
-            doc_bits.append(json.dumps(result.data, default=str)[:3500])
+            doc_bits.append(json.dumps(_bound_context(result.data), default=str))
         else:
-            tool_payload.append({"tool": result.name.value, "data": result.data})
+            tool_payload.append({"tool": result.name.value, "data": _bound_context(result.data)})
     parts = [
-        TOOL_RESULTS_WRAPPER.format(content=json.dumps(tool_payload, default=str)[:6000]),
+        TOOL_RESULTS_WRAPPER.format(content=json.dumps(tool_payload, default=str)),
     ]
     if doc_bits:
         parts.append(DOCUMENT_DATA_WRAPPER.format(content="\n\n".join(doc_bits)))
@@ -155,6 +159,22 @@ def _build_context_message(results: list[ToolResult], sources: list[SourceRef]) 
             )
         )
     return "\n".join(parts)
+
+
+def _bound_context(value, depth: int = 0):
+    """Keep tool context useful and bounded without truncating its JSON structure."""
+    if depth >= 6:
+        return "…"
+    if isinstance(value, dict):
+        return {
+            str(key): _bound_context(item, depth + 1)
+            for key, item in list(value.items())[:40]
+        }
+    if isinstance(value, list):
+        return [_bound_context(item, depth + 1) for item in value[:20]]
+    if isinstance(value, str) and len(value) > 1600:
+        return value[:1600] + "…"
+    return value
 
 
 def _try_direct_answer(message: str, results: list[ToolResult]) -> str | None:

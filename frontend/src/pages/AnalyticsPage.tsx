@@ -212,12 +212,18 @@ export function AnalyticsPage() {
 
   return (
     <section className="space-y-8">
-      <div>
-        <h2 className="text-base font-semibold text-[var(--cp-ink)]">Academic analytics</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--cp-muted)]">
-          Explainable insights from your marks, attendance, exams, and assignments — calculated on
-          the server from real data.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="cp-kicker">Performance intelligence</p>
+          <h2 className="cp-page-title mt-2">Academic analytics</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--cp-muted)]">
+            Explainable insights from your marks, attendance, exams, and assignments — calculated on
+            the server from real data.
+          </p>
+        </div>
+        <Link to="/assistant" state={{ prompt: 'Summarize my academic performance and explain the semester trend.' }} className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-[var(--cp-radius-sm)] border border-[var(--cp-border)] bg-white px-3.5 text-xs font-semibold text-[var(--cp-ink)] transition hover:bg-[var(--cp-brand-wash)] sm:self-auto">
+          Explain my performance <span aria-hidden="true">→</span>
+        </Link>
       </div>
 
       {error ? <Alert>{error}</Alert> : null}

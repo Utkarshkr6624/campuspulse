@@ -21,6 +21,11 @@ def plan_tools(message: str) -> IntentPlan:
     intents: list[str] = []
     document_query: str | None = None
 
+    what_if_signals = ("what if", "if i get", "if i improve", "what happens", "what grade", "grades do i need", "reach a gpa", "reach gpa", "simulate")
+    if any(signal in text for signal in what_if_signals):
+        tools.append(ToolName.SIMULATE_GPA)
+        intents.append("gpa_simulation")
+
     personal_keywords = {
         "gpa": ToolName.GET_GPA,
         "cgpa": ToolName.GET_CGPA,
@@ -44,7 +49,7 @@ def plan_tools(message: str) -> IntentPlan:
     }
 
     for keyword, tool in personal_keywords.items():
-        if keyword in text and tool not in tools:
+        if keyword in text and tool not in tools and ToolName.SIMULATE_GPA not in tools:
             tools.append(tool)
             intents.append(keyword)
 
@@ -68,6 +73,11 @@ def plan_tools(message: str) -> IntentPlan:
         intents.append("documents")
         document_query = message.strip()
 
+    if any(signal in text for signal in ("semester", "semester history", "semester trend", "semester gpa", "credits")):
+        if ToolName.GET_ACADEMIC_INTELLIGENCE not in tools:
+            tools.append(ToolName.GET_ACADEMIC_INTELLIGENCE)
+        intents.append("academic_intelligence")
+
     # Broad academic summary prompts.
     if any(phrase in text for phrase in ("summarize my", "academic performance", "how am i doing", "overview")):
         for tool in (
@@ -76,6 +86,7 @@ def plan_tools(message: str) -> IntentPlan:
             ToolName.GET_ATTENDANCE,
             ToolName.GET_ACADEMIC_INSIGHTS,
             ToolName.GET_COURSE_PERFORMANCE,
+            ToolName.GET_ACADEMIC_INTELLIGENCE,
         ):
             if tool not in tools:
                 tools.append(tool)

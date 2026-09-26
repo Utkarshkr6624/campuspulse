@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 
 const tones = {
-  neutral: 'bg-slate-100 text-slate-700',
-  brand: 'bg-[color-mix(in_srgb,var(--cp-brand)_10%,white)] text-[var(--cp-brand)]',
-  accent: 'bg-[color-mix(in_srgb,var(--cp-accent)_18%,white)] text-[#7a6110]',
-  success: 'bg-teal-50 text-teal-800',
-  danger: 'bg-red-50 text-red-700',
+  neutral: 'bg-[#eef1ed] text-[#53625a]',
+  brand: 'bg-[var(--cp-brand-wash)] text-[var(--cp-brand)]',
+  accent: 'bg-[#f6efd9] text-[#7d5a12]',
+  success: 'bg-[#e8f4ec] text-[#176445]',
+  danger: 'bg-[#f9eae7] text-[#a3322d]',
 } as const
 
 export function Badge({
@@ -18,7 +18,7 @@ export function Badge({
   className?: string
 }) {
   return (
-    <span className={`inline-flex items-center rounded-lg px-2 py-1 text-xs font-semibold ${tones[tone]} ${className}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.68rem] font-semibold leading-none tracking-wide ${tones[tone]} ${className}`}>
       {children}
     </span>
   )

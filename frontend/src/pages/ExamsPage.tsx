@@ -65,10 +65,12 @@ export function ExamsPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState<EditorState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const [filterCourseId, setFilterCourseId] = useState('')
   const [filterType, setFilterType] = useState('')
@@ -168,6 +170,7 @@ export function ExamsPage() {
       return
     }
     setFormError(null)
+    setSuccess(null)
     setSubmitting(true)
     try {
       const payload = {
@@ -188,6 +191,7 @@ export function ExamsPage() {
       } else {
         await updateExam(editor.exam.id, payload)
       }
+      setSuccess(editor.mode === 'create' ? 'Exam added successfully.' : 'Exam updated successfully.')
       setEditor(null)
       await load()
     } catch (caught) {
@@ -203,10 +207,14 @@ export function ExamsPage() {
       return
     }
     try {
+      setDeletingId(exam.id)
       await deleteExam(exam.id)
+      setSuccess('Exam deleted successfully.')
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not delete exam.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -278,6 +286,7 @@ export function ExamsPage() {
       </Card>
 
       {error ? <Alert>{error}</Alert> : null}
+      {success ? <p role="status" className="text-sm font-medium text-[var(--cp-success)]">{success}</p> : null}
       {loading ? (
         <p className="text-sm text-[var(--cp-muted)]" role="status">
           Loading exams
@@ -320,11 +329,11 @@ export function ExamsPage() {
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => openEdit(exam)}>
+                  <Button size="sm" variant="secondary" disabled={deletingId === exam.id} onClick={() => openEdit(exam)}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => void handleDelete(exam)}>
-                    Delete
+                  <Button size="sm" variant="ghost" disabled={deletingId === exam.id} onClick={() => void handleDelete(exam)}>
+                    {deletingId === exam.id ? 'Deleting…' : 'Delete'}
                   </Button>
                 </div>
               </Card>

@@ -14,8 +14,9 @@ from app.schemas.semester import (
     SemesterRead,
     SemesterSetup,
     SemesterCreate,
+    SemesterUpdate,
 )
-from app.services import academic_service, grading_scheme_service
+from app.services import academic_service, course_service, grading_scheme_service
 from app.services.academic import GradedCourseInput, GradeBandRule, compute_gpa, compute_grade, letter_to_grade_point
 
 
@@ -74,13 +75,36 @@ def create_semester(db: Session, student_id: int, data: SemesterCreate) -> Semes
         raise ConflictError("That semester already exists.")
     if data.set_current:
         db.execute(update(Semester).where(Semester.student_id == student_id).values(is_current=False))
-    semester = Semester(student_id=student_id, number=data.number, is_current=data.set_current)
+    semester = Semester(
+        student_id=student_id,
+        number=data.number,
+        is_current=data.set_current,
+        academic_year=data.academic_year,
+        recorded_sgpa=data.recorded_sgpa,
+        recorded_credits=data.recorded_credits,
+    )
     db.add(semester)
+    if data.set_current:
+        db.flush()
+        _attach_unassigned_enrollments(db, student_id, semester.id)
     commit_or_conflict(db, "That semester already exists.")
     db.refresh(semester)
-    if data.set_current:
-        _attach_unassigned_enrollments(db, student_id, semester.id)
-        db.commit()
+    return _summary(db, semester)
+
+
+def update_semester(
+    db: Session, student_id: int, semester_id: int, data: SemesterUpdate
+) -> SemesterRead:
+    semester = get_semester(db, student_id, semester_id)
+    changes = data.model_dump(exclude_unset=True)
+    next_sgpa = changes.get("recorded_sgpa", semester.recorded_sgpa)
+    next_credits = changes.get("recorded_credits", semester.recorded_credits)
+    if next_sgpa is not None and next_credits < 1:
+        raise BadRequestError("Enter credits when recording an official SGPA.")
+    for field, value in changes.items():
+        setattr(semester, field, value)
+    commit_or_conflict(db, "Semester could not be updated.")
+    db.refresh(semester)
     return _summary(db, semester)
 
 
@@ -110,23 +134,50 @@ def delete_semester(db: Session, student_id: int, semester_id: int) -> None:
 def add_history_course(
     db: Session, student_id: int, semester_id: int, data: SemesterCourseCreate
 ) -> SemesterCourseRead:
+    record = _build_history_course(db, student_id, semester_id, data)
+    db.add(record)
+    commit_or_conflict(db, "A course with that code already exists in this semester.")
+    db.refresh(record)
+    return _course_read(record)
+
+
+def add_history_courses(
+    db: Session, student_id: int, semester_id: int, data: list[SemesterCourseCreate]
+) -> list[SemesterCourseRead]:
+    records = [_build_history_course(db, student_id, semester_id, item) for item in data]
+    db.add_all(records)
+    commit_or_conflict(db, "A course with that code already exists in this semester.")
+    for record in records:
+        db.refresh(record)
+    return [_course_read(record) for record in records]
+
+
+def _build_history_course(
+    db: Session,
+    student_id: int,
+    semester_id: int,
+    data: SemesterCourseCreate,
+    *,
+    exclude_record_id: int | None = None,
+) -> SemesterCourse:
     semester = get_semester(db, student_id, semester_id)
     current_number = db.scalar(
         select(Semester.number).where(Semester.student_id == student_id, Semester.is_current.is_(True))
     )
     if current_number is None or semester.number >= current_number:
         raise BadRequestError("Historical course results can only be added to a previous semester.")
-    course = db.get(Course, data.course_id) if data.course_id is not None else None
+    course = course_service.get_course(db, data.course_id, student_id) if data.course_id is not None else None
     if data.course_id is not None and course is None:
         raise NotFoundError("Course not found.")
     name = course.title if course else data.course_name
     code = course.code if course else data.course_code
-    if code and db.scalar(
-        select(SemesterCourse.id).where(
-            SemesterCourse.semester_id == semester.id,
-            SemesterCourse.course_code == code,
-        )
-    ):
+    duplicate_query = select(SemesterCourse.id).where(
+        SemesterCourse.semester_id == semester.id,
+        SemesterCourse.course_code == code,
+    )
+    if exclude_record_id is not None:
+        duplicate_query = duplicate_query.where(SemesterCourse.id != exclude_record_id)
+    if code and db.scalar(duplicate_query):
         raise ConflictError("A course with that code already exists in this semester.")
 
     scheme = grading_scheme_service.resolve_scheme_for_course(db, course.grading_scheme_id if course else None)
@@ -143,7 +194,7 @@ def add_history_course(
         except ValueError:
             raise BadRequestError("Choose a grade from the configured grading scheme.") from None
 
-    record = SemesterCourse(
+    return SemesterCourse(
         semester_id=semester.id,
         course_id=course.id if course else None,
         course_name=name,
@@ -155,12 +206,6 @@ def add_history_course(
         course_component=data.course_component,
         notes=data.notes,
     )
-    db.add(record)
-    commit_or_conflict(db, "A course with that code already exists in this semester.")
-    db.refresh(record)
-    return _course_read(record)
-
-
 def update_history_course(
     db: Session,
     student_id: int,
@@ -169,9 +214,15 @@ def update_history_course(
     data: SemesterCourseCreate,
 ) -> SemesterCourseRead:
     record = _get_history_course(db, student_id, semester_id, record_id)
-    db.delete(record)
-    db.flush()
-    return add_history_course(db, student_id, semester_id, data)
+    replacement = _build_history_course(db, student_id, semester_id, data, exclude_record_id=record.id)
+    for field in (
+        "course_id", "course_name", "course_code", "credits", "grade", "grade_point",
+        "final_score", "course_component", "notes",
+    ):
+        setattr(record, field, getattr(replacement, field))
+    commit_or_conflict(db, "A course with that code already exists in this semester.")
+    db.refresh(record)
+    return _course_read(record)
 
 
 def delete_history_course(db: Session, student_id: int, semester_id: int, record_id: int) -> None:
@@ -185,10 +236,22 @@ def cumulative_gpa(db: Session, student_id: int) -> GpaRead:
     current = next((item for item in semesters if item.is_current), None)
     if current is None:
         legacy = academic_service.list_course_performance(db, student_id)
-        result = compute_gpa([
+        legacy_inputs = [
             GradedCourseInput(item.course.id, item.credits, item.grade_point or 0, item.status)
             for item in legacy
-        ])
+        ]
+        for semester in semesters:
+            has_course_rows = bool(semester.history_courses) or db.scalar(
+                select(Enrollment.id).where(
+                    Enrollment.student_id == student_id,
+                    Enrollment.semester_id == semester.id,
+                ).limit(1)
+            ) is not None
+            if not has_course_rows and semester.recorded_sgpa is not None and semester.recorded_credits > 0:
+                legacy_inputs.append(
+                    GradedCourseInput(-semester.id, semester.recorded_credits, semester.recorded_sgpa, "complete")
+                )
+        result = compute_gpa(legacy_inputs)
         return GpaRead(
             status=result.status,
             value=result.value,
@@ -200,6 +263,12 @@ def cumulative_gpa(db: Session, student_id: int) -> GpaRead:
     current_number = current.number if current is not None else None
     for semester in semesters:
         if current_number is not None and semester.number >= current_number:
+            continue
+        has_results = bool(semester.history_courses) or db.scalar(
+            select(Enrollment.id).where(Enrollment.student_id == student_id, Enrollment.semester_id == semester.id).limit(1)
+        ) is not None
+        if not has_results and semester.recorded_sgpa is not None and semester.recorded_credits > 0:
+            graded.append(GradedCourseInput(-semester.id, semester.recorded_credits, semester.recorded_sgpa, "complete"))
             continue
         history_codes = {item.course_code for item in semester.history_courses if item.course_code}
         for item in semester.history_courses:
@@ -217,9 +286,10 @@ def cumulative_gpa(db: Session, student_id: int) -> GpaRead:
                     )
                 )
     if current is not None:
-        for performance in academic_service.list_course_performance(
+        current_performances = academic_service.list_course_performance(
             db, student_id, semester_id=current.id
-        ):
+        )
+        for performance in current_performances:
             graded.append(
                 GradedCourseInput(
                     performance.course.id,
@@ -228,6 +298,8 @@ def cumulative_gpa(db: Session, student_id: int) -> GpaRead:
                     performance.status,
                 )
             )
+        if not current_performances and current.recorded_sgpa is not None and current.recorded_credits > 0:
+            graded.append(GradedCourseInput(-current.id, current.recorded_credits, current.recorded_sgpa, "complete"))
     result = compute_gpa(graded)
     return GpaRead(
         status=result.status,
@@ -256,6 +328,14 @@ def _summary(db: Session, semester: Semester) -> SemesterRead:
         for item in semester_performances
     )
     result = compute_gpa(gpa_inputs)
+    if result.value is None and semester.recorded_sgpa is not None:
+        result = type(result)(
+            status="recorded",
+            value=semester.recorded_sgpa,
+            credited_courses=1 if semester.recorded_credits > 0 else 0,
+            total_credits=float(semester.recorded_credits),
+            message="Official semester SGPA recorded manually; course-level calculation is not available.",
+        )
     gpa = GpaRead(
         status=result.status,
         value=result.value,
@@ -273,10 +353,13 @@ def _summary(db: Session, semester: Semester) -> SemesterRead:
     return SemesterRead(
         id=semester.id,
         number=semester.number,
+        academic_year=semester.academic_year,
+        recorded_sgpa=semester.recorded_sgpa,
+        recorded_credits=semester.recorded_credits,
         status=status,
         is_current=semester.is_current,
         course_count=len(history) + len(semester_performances),
-        total_credits=sum(item.credits for item in history) + sum(item.credits for item in semester_performances),
+        total_credits=sum(item.credits for item in history) + sum(item.credits for item in semester_performances) or semester.recorded_credits,
         gpa=gpa,
         created_at=semester.created_at,
         updated_at=semester.updated_at,

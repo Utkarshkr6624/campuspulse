@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.academic import GpaRead
 
@@ -16,6 +16,41 @@ class SemesterSetup(BaseModel):
 class SemesterCreate(BaseModel):
     number: int = Field(ge=1, le=100)
     set_current: bool = False
+    academic_year: str | None = Field(default=None, min_length=4, max_length=16)
+    recorded_sgpa: float | None = Field(default=None, ge=0, le=10)
+    recorded_credits: int = Field(default=0, ge=0, le=500)
+
+    @field_validator("academic_year", mode="before")
+    @classmethod
+    def normalize_academic_year(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def validate_recorded_gpa(self):
+        if self.recorded_sgpa is not None and self.recorded_credits < 1:
+            raise ValueError("Enter credits when recording an official SGPA.")
+        return self
+
+
+class SemesterUpdate(BaseModel):
+    academic_year: str | None = Field(default=None, min_length=4, max_length=16)
+    recorded_sgpa: float | None = Field(default=None, ge=0, le=10)
+    recorded_credits: int | None = Field(default=None, ge=0, le=500)
+
+    @field_validator("academic_year", mode="before")
+    @classmethod
+    def normalize_academic_year(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def validate_recorded_gpa(self):
+        if self.recorded_sgpa is not None and self.recorded_credits is not None and self.recorded_credits < 1:
+            raise ValueError("Enter credits when recording an official SGPA.")
+        return self
 
 
 class SemesterCourseCreate(BaseModel):
@@ -58,6 +93,9 @@ class SemesterCourseRead(BaseModel):
 class SemesterRead(BaseModel):
     id: int
     number: int
+    academic_year: str | None = None
+    recorded_sgpa: float | None = None
+    recorded_credits: int = 0
     status: SemesterStatus
     is_current: bool
     course_count: int
