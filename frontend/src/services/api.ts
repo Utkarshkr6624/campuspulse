@@ -12,6 +12,9 @@ import type {
   AttendanceRecord,
   AttendanceUpdateInput,
   CampusDocument,
+  ChatResponse,
+  ConversationDetail,
+  ConversationSummary,
   Course,
   CourseAnalytics,
   CourseAttendanceSummary,
@@ -243,4 +246,26 @@ export function deleteDocument(documentId: number): Promise<void> {
 export function documentFileUrl(documentId: number): string {
   const base = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
   return `${base}/api/documents/${documentId}/file`
+}
+
+export function sendAiChat(message: string, conversationId?: number | null): Promise<ChatResponse> {
+  return request<ChatResponse>('/api/ai/chat', {
+    method: 'POST',
+    body: {
+      message,
+      conversation_id: conversationId ?? null,
+    },
+  })
+}
+
+export function getAiConversations(): Promise<ConversationSummary[]> {
+  return request<ConversationSummary[]>('/api/ai/conversations')
+}
+
+export function getAiConversation(conversationId: number): Promise<ConversationDetail> {
+  return request<ConversationDetail>(`/api/ai/conversations/${conversationId}`)
+}
+
+export function deleteAiConversation(conversationId: number): Promise<void> {
+  return request<void>(`/api/ai/conversations/${conversationId}`, { method: 'DELETE' })
 }

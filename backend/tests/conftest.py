@@ -4,6 +4,9 @@ from pathlib import Path
 os.environ["JWT_SECRET_KEY"] = "phase4-test-secret-key-with-enough-length-123456"
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["CORS_ORIGINS"] = "http://localhost:5173"
+os.environ["AI_PROVIDER"] = "mock"
+os.environ["AI_API_KEY"] = ""
+
 
 _TEST_STORAGE = Path(__file__).resolve().parent / "_test_storage"
 _TEST_STORAGE.mkdir(exist_ok=True)

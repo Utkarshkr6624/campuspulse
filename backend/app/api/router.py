@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     academic,
+    ai,
     analytics,
     assignments,
     attendance,
@@ -28,3 +29,4 @@ api_router.include_router(exams.router)
 api_router.include_router(assignments.router)
 api_router.include_router(analytics.router)
 api_router.include_router(documents.router)
+api_router.include_router(ai.router)

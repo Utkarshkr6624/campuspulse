@@ -3,6 +3,7 @@ import { RequireAuth } from './components/RequireAuth.tsx'
 import { AuthProvider } from './hooks/useAuth.tsx'
 import { AppLayout } from './layouts/AppLayout.tsx'
 import { AnalyticsPage } from './pages/AnalyticsPage.tsx'
+import { AssistantPage } from './pages/AssistantPage.tsx'
 import { AssignmentsPage } from './pages/AssignmentsPage.tsx'
 import { AttendancePage } from './pages/AttendancePage.tsx'
 import { CoursesPage } from './pages/CoursesPage.tsx'
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="documents/:documentId" element={<DocumentDetailPage />} />
+              <Route path="assistant" element={<AssistantPage />} />
               <Route path="students" element={<StudentsPage />} />
               <Route path="enrollments" element={<EnrollmentsPage />} />
               <Route path="*" element={<NotFoundPage />} />

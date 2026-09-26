@@ -11,6 +11,7 @@ const links = [
   { to: '/planner', label: 'Planner', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
   { to: '/documents', label: 'Documents', end: false },
+  { to: '/assistant', label: 'AI Assistant', end: false },
 ]
 
 export function Sidebar() {
@@ -60,7 +61,7 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="border-t border-white/10 px-5 py-4 text-xs text-slate-400">
-          Phase 7 · University knowledge
+          Phase 8 · CampusPulse AI
         </div>
       </aside>
     </>

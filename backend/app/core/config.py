@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     document_storage_backend: str = "local"
     document_storage_path: str = "./storage/uploads"
     document_max_upload_bytes: int = DEFAULT_MAX_UPLOAD_BYTES
+    ai_provider: str = "mock"
+    ai_model: str = "gpt-4o-mini"
+    ai_base_url: str = "https://api.openai.com/v1"
+    ai_api_key: str | None = None
+    ai_timeout_seconds: int = 30
+    ai_max_history_messages: int = 10
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",
@@ -58,6 +64,20 @@ class Settings(BaseSettings):
     def validate_upload_limit(cls, value: int) -> int:
         if value < 1024 or value > 50 * 1024 * 1024:
             raise ValueError("DOCUMENT_MAX_UPLOAD_BYTES must be between 1 KiB and 50 MiB.")
+        return value
+
+    @field_validator("ai_timeout_seconds")
+    @classmethod
+    def validate_ai_timeout(cls, value: int) -> int:
+        if value < 5 or value > 120:
+            raise ValueError("AI_TIMEOUT_SECONDS must be between 5 and 120.")
+        return value
+
+    @field_validator("ai_max_history_messages")
+    @classmethod
+    def validate_history(cls, value: int) -> int:
+        if value < 2 or value > 40:
+            raise ValueError("AI_MAX_HISTORY_MESSAGES must be between 2 and 40.")
         return value
 
     @property

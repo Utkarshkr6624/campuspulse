@@ -1,5 +1,6 @@
 from app.models.assignment import Assignment
 from app.models.attendance import AttendanceRecord
+from app.models.conversation import Conversation, Message
 from app.models.course import Course
 from app.models.course_mark import CourseMark
 from app.models.document import Document, DocumentChunk
@@ -12,6 +13,7 @@ __all__ = [
     "AssessmentWeight",
     "Assignment",
     "AttendanceRecord",
+    "Conversation",
     "Course",
     "CourseMark",
     "Document",
@@ -20,5 +22,6 @@ __all__ = [
     "Exam",
     "GradeBand",
     "GradingScheme",
+    "Message",
     "Student",
 ]

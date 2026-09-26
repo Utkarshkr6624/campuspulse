@@ -450,3 +450,48 @@ export type DocumentSearchResponse = {
   results: DocumentSearchHit[]
 }
 
+export type ChatSource = {
+  document_id: number
+  title: string
+  page_number: number | null
+  snippet: string | null
+  category: string | null
+}
+
+export type ChatResponse = {
+  conversation_id: number
+  message_id: number
+  answer: string
+  sources: ChatSource[]
+  tools_used: string[]
+  grounding: string[]
+}
+
+export type ChatMessage = {
+  id: number
+  conversation_id: number
+  role: 'USER' | 'ASSISTANT'
+  content: string
+  sources: ChatSource[]
+  tools_used: string[]
+  grounding: string[]
+  created_at: string
+}
+
+export type ConversationSummary = {
+  id: number
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
+export type ConversationDetail = {
+  id: number
+  student_id: number
+  title: string
+  created_at: string
+  updated_at: string
+  messages: ChatMessage[]
+}
+
