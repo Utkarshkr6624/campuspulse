@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, NotFoundError
@@ -22,14 +22,18 @@ def get_student(db: Session, student_id: int) -> Student:
 
 
 def get_student_by_email(db: Session, email: str) -> Student | None:
-    return db.scalar(select(Student).where(Student.email == email))
+    normalized_email = _normalize_email(email)
+    return db.scalar(
+        select(Student).where(func.lower(func.trim(Student.email)) == normalized_email)
+    )
 
 
 def create_student(db: Session, data: StudentCreate) -> Student:
-    ensure_identity_available(db, email=data.email, university_id=data.university_id)
+    normalized_email = _normalize_email(str(data.email))
+    ensure_identity_available(db, email=normalized_email, university_id=data.university_id)
     student = Student(
         full_name=data.full_name,
-        email=str(data.email),
+        email=normalized_email,
         university_id=data.university_id,
         password_hash=hash_password(data.password),
         role=DEFAULT_USER_ROLE,
@@ -43,6 +47,8 @@ def create_student(db: Session, data: StudentCreate) -> Student:
 def update_student(db: Session, student_id: int, data: StudentUpdate) -> Student:
     student = get_student(db, student_id)
     changes = data.model_dump(exclude_unset=True)
+    if isinstance(changes.get("email"), str):
+        changes["email"] = _normalize_email(changes["email"])
     ensure_identity_available(
         db,
         email=changes.get("email", student.email),
@@ -68,9 +74,16 @@ def ensure_identity_available(
     university_id: str,
     student_id: int | None = None,
 ) -> None:
-    email_owner = db.scalar(select(Student).where(Student.email == email))
+    normalized_email = _normalize_email(email) if email else email
+    email_owner = db.scalar(
+        select(Student).where(func.lower(func.trim(Student.email)) == normalized_email)
+    )
     if email_owner is not None and email_owner.id != student_id:
-        raise ConflictError("An account with these details already exists.")
+        raise ConflictError("An account with this email already exists. Please log in instead.")
     id_owner = db.scalar(select(Student).where(Student.university_id == university_id))
     if id_owner is not None and id_owner.id != student_id:
         raise ConflictError("An account with these details already exists.")
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()

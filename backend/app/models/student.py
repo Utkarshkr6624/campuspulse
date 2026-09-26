@@ -1,4 +1,4 @@
-from sqlalchemy import Float, String
+from sqlalchemy import Float, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.roles import DEFAULT_USER_ROLE
@@ -28,3 +28,10 @@ class Student(TimestampMixin, Base):
     semesters: Mapped[list["Semester"]] = relationship(
         back_populates="student", cascade="all, delete-orphan", order_by="Semester.number"
     )
+
+
+Index(
+    "uq_students_email_normalized",
+    func.lower(func.trim(Student.email)),
+    unique=True,
+)

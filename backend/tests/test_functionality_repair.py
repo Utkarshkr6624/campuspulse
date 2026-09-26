@@ -5,6 +5,82 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
+from app.db import session as db_session
+from app.core.config import Settings
+from app.models.student import Student
+
+
+def test_auth_finds_legacy_email_case_and_whitespace_without_replacing_account(client):
+    registered = client.post("/api/auth/register", json={
+        "full_name": "Legacy Email",
+        "email": "legacy.email@example.edu",
+        "university_id": "LEGACYEMAIL",
+        "password": "correct-horse",
+    })
+    assert registered.status_code == 201, registered.text
+    assert registered.json()["student"]["email"] == "legacy.email@example.edu"
+    original_student_id = registered.json()["student"]["id"]
+
+    headers = {"Authorization": f"Bearer {registered.json()['access_token']}"}
+    course = client.post("/api/courses", headers=headers, json={
+        "code": "LEG101", "title": "Legacy Data", "credits": 3,
+    })
+    assert course.status_code == 201, course.text
+
+    with db_session.SessionLocal() as db:
+        student = db.get(Student, original_student_id)
+        assert student is not None
+        student.email = "Legacy.Email@Example.edu"
+        db.commit()
+
+    login = client.post("/api/auth/login", json={
+        "email": "  LEGACY.email@EXAMPLE.edu  ",
+        "password": "correct-horse",
+    })
+    assert login.status_code == 200, login.text
+    assert login.json()["student"]["id"] == original_student_id
+    logged_in_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    persisted_courses = client.get("/api/courses", headers=logged_in_headers)
+    assert persisted_courses.status_code == 200
+    assert [item["code"] for item in persisted_courses.json()] == ["LEG101"]
+
+    wrong_password = client.post("/api/auth/login", json={
+        "email": "legacy.email@example.edu",
+        "password": "wrong-password",
+    })
+    assert wrong_password.status_code == 401
+
+    duplicate = client.post("/api/auth/register", json={
+        "full_name": "Duplicate",
+        "email": " LEGACY.EMAIL@example.edu ",
+        "university_id": "LEGACYEMAIL2",
+        "password": "correct-horse",
+    })
+    assert duplicate.status_code == 409
+    assert "log in instead" in duplicate.json()["detail"].lower()
+
+
+def test_normalized_email_unique_index_rejects_direct_case_and_space_variant(client, auth_headers):
+    _headers, student = auth_headers("normalized-index")
+    with db_session.SessionLocal() as db:
+        db.add(Student(
+            full_name="Duplicate Email",
+            email=f"  {student['email'].upper()}  ",
+            university_id="DUP-NORMALIZED-EMAIL",
+            password_hash="not-a-real-hash",
+        ))
+        with pytest.raises(IntegrityError):
+            db.commit()
+
+
+def test_database_url_falls_back_to_sqlite_when_not_configured(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    settings = Settings(
+        _env_file=None,
+        jwt_secret_key="sqlite-fallback-test-secret-with-sufficient-length",
+    )
+    assert settings.database_url == "sqlite:///./campuspulse.db"
+
 
 def test_student_academic_workflow_persists_and_is_private(client, auth_headers):
     headers_a, _ = auth_headers("flow-a")

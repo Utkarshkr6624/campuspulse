@@ -1,9 +1,10 @@
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 from sqlalchemy.schema import CreateIndex, CreateTable
 
 from app.db.session import Base, SessionLocal, engine
 from app.models.course import Course
 from app.models.course_mark import CourseMark
+from app.models.student import Student
 from app.services import grading_scheme_service
 
 _IDENTITY_COLUMNS = {"full_name", "university_id", "password_hash"}
@@ -33,6 +34,7 @@ def prepare_database() -> None:
     _ensure_column("students", "role", "VARCHAR(16) NOT NULL DEFAULT 'STUDENT'")
     _ensure_column("students", "token_version", "INTEGER NOT NULL DEFAULT 0")
     _ensure_column("enrollments", "semester_id", "INTEGER REFERENCES semesters(id)")
+    _migrate_normalized_student_email_index()
     _migrate_course_ownership_indexes()
     _migrate_custom_assessments()
     _migrate_duplicate_event_indexes()
@@ -42,6 +44,26 @@ def prepare_database() -> None:
         grading_scheme_service.ensure_default_scheme(db)
     finally:
         db.close()
+
+
+def _migrate_normalized_student_email_index() -> None:
+    # Do not alter or discard legacy accounts to make the new index fit.
+    with engine.begin() as connection:
+        emails = connection.execute(select(Student.email)).scalars()
+        normalized_emails: set[str] = set()
+        for email in emails:
+            normalized = email.strip().lower()
+            if normalized in normalized_emails:
+                raise RuntimeError(
+                    "Multiple student accounts have the same normalized email. "
+                    "Resolve the duplicate accounts explicitly before starting; "
+                    "no user data was changed."
+                )
+            normalized_emails.add(normalized)
+        connection.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_students_email_normalized "
+            "ON students (lower(trim(email)))"
+        ))
 
 
 def _migrate_course_ownership_indexes() -> None:
