@@ -283,6 +283,10 @@ export function AnalyticsPage() {
                     Previous SGPA {metric(intelligence.previous_sgpa)}
                     {intelligence.sgpa_change !== null ? ` · ${intelligence.sgpa_change > 0 ? '+' : ''}${intelligence.sgpa_change}` : ''}
                   </p>
+                  <p className="mt-1 text-xs text-[var(--cp-muted)]">
+                    Best: {intelligence.best_semester_number ? `Sem ${intelligence.best_semester_number} · ${metric(intelligence.best_sgpa)}` : '—'}
+                    {' · '}Lowest: {intelligence.lowest_semester_number ? `Sem ${intelligence.lowest_semester_number} · ${metric(intelligence.lowest_sgpa)}` : '—'}
+                  </p>
                 </Card>
                 <Card>
                   <CardTitle>Average recorded marks</CardTitle>

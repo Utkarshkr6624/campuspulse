@@ -12,10 +12,8 @@ from app.core.analytics_config import (
     ATTENDANCE_WARNING_THRESHOLD,
     LOW_SCORE_THRESHOLD,
     STRONG_SCORE_THRESHOLD,
-    AttendanceHealth,
     attendance_health,
 )
-from app.models.semester import Semester
 from app.schemas.analytics import (
     AcademicIntelligence,
     IntelligenceAssessment,
@@ -186,13 +184,14 @@ def get_academic_intelligence(
 
     course_trends: list[dict] = []
     for identity, rows in trend_by_identity.items():
-        ordered = sorted(rows, key=lambda entry: entry[0])
+        ordered = sorted(
+            (entry for entry in rows if entry[1]["score"] is not None),
+            key=lambda entry: entry[0],
+        )
         if len(ordered) < 2:
             continue
         old_number, old = ordered[-2]
         new_number, new = ordered[-1]
-        if old["score"] is None or new["score"] is None:
-            continue
         course_trends.append({
             "identity": identity,
             "course_code": new["course_code"] or old["course_code"],
@@ -244,13 +243,16 @@ def get_academic_intelligence(
                 cat1_to_cat2_change=round(by_type["CAT2"] - by_type["CAT1"], 1)
                 if "CAT1" in by_type and "CAT2" in by_type else None,
             ))
-    current_credits = sum(item["credits"] for item in current_rows)
+    current_credits = sum(item["credits"] for item in current_rows) if current else 0
     current_sgpa = current.gpa.value if current else analytics_service.get_overview(db, student_id).gpa.value
     previous_sgpa = previous.gpa.value if previous else None
     sgpa_change = (
         round(current_sgpa - previous_sgpa, 2)
         if current_sgpa is not None and previous_sgpa is not None else None
     )
+    semesters_with_gpa = [item for item in trend if item.sgpa is not None]
+    best_semester = max(semesters_with_gpa, key=lambda item: (item.sgpa, -item.semester_number), default=None)
+    lowest_semester = min(semesters_with_gpa, key=lambda item: (item.sgpa, item.semester_number), default=None)
     comparison = None
     if first_semester_id is not None and second_semester_id is not None:
         first = semester_service.get_semester(db, student_id, first_semester_id)
@@ -295,6 +297,10 @@ def get_academic_intelligence(
         current_sgpa=current_sgpa,
         previous_sgpa=previous_sgpa,
         sgpa_change=sgpa_change,
+        best_semester_number=best_semester.semester_number if best_semester else None,
+        best_sgpa=best_semester.sgpa if best_semester else None,
+        lowest_semester_number=lowest_semester.semester_number if lowest_semester else None,
+        lowest_sgpa=lowest_semester.sgpa if lowest_semester else None,
         cgpa=academic_service.get_cgpa(db, student_id),
         completed_credits=total_completed_credits,
         current_semester_credits=current_credits,

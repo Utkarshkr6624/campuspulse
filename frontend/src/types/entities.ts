@@ -497,6 +497,10 @@ export type AcademicIntelligence = {
   current_sgpa: number | null
   previous_sgpa: number | null
   sgpa_change: number | null
+  best_semester_number: number | null
+  best_sgpa: number | null
+  lowest_semester_number: number | null
+  lowest_sgpa: number | null
   cgpa: GpaRead
   completed_credits: number
   current_semester_credits: number

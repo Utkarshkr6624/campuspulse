@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth.tsx'
 import {
   getAcademicSummary,
   getAnalyticsInsights,
+  getAnalyticsIntelligence,
   getAssignments,
   getAttendanceOverview,
   getExams,
@@ -21,6 +22,7 @@ import {
 } from '../services/api.ts'
 import type {
   AcademicInsight,
+  AcademicIntelligence,
   AcademicSummary,
   Assignment,
   AttendanceOverview,
@@ -50,6 +52,7 @@ export function OverviewPage() {
   const [upcomingExams, setUpcomingExams] = useState<Exam[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [insights, setInsights] = useState<AcademicInsight[]>([])
+  const [intelligence, setIntelligence] = useState<AcademicIntelligence | null>(null)
   const [hasSemesterSetup, setHasSemesterSetup] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,8 +66,9 @@ export function OverviewPage() {
       getAssignments(),
       getAnalyticsInsights(),
       getSemesters(),
+      getAnalyticsIntelligence(),
     ])
-      .then(([nextAcademic, nextAttendance, nextExams, nextAssignments, nextInsights, nextSemesters]) => {
+      .then(([nextAcademic, nextAttendance, nextExams, nextAssignments, nextInsights, nextSemesters, nextIntelligence]) => {
         if (!active) {
           return
         }
@@ -74,6 +78,7 @@ export function OverviewPage() {
         setAssignments(nextAssignments)
         setInsights(nextInsights.insights.slice(0, 3))
         setHasSemesterSetup(nextSemesters.length > 0)
+        setIntelligence(nextIntelligence)
       })
       .catch((caught: unknown) => {
         if (active) {
@@ -173,6 +178,24 @@ export function OverviewPage() {
           ) : null}
         </Card>
       </div>
+
+      {!loading && intelligence && intelligence.data_status !== 'empty' ? (
+        <Card className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <CardTitle>Performance snapshot</CardTitle>
+            <p className="mt-1 text-sm text-[var(--cp-muted)]">
+              SGPA {metricValue(intelligence.current_sgpa)}
+              {intelligence.sgpa_change !== null
+                ? ` · ${intelligence.sgpa_change > 0 ? '+' : ''}${intelligence.sgpa_change} from previous semester`
+                : ` · ${intelligence.message ?? 'Semester trend is still building'}`}
+              {` · ${intelligence.completed_credits} completed credits`}
+            </p>
+          </div>
+          <Link className="text-sm font-semibold text-[var(--cp-brand)] underline-offset-2 hover:underline" to="/analytics">
+            View performance analysis
+          </Link>
+        </Card>
+      ) : null}
 
       <Card className="space-y-4">
         <div className="flex items-end justify-between gap-3">

@@ -193,6 +193,10 @@ class AcademicIntelligence(BaseModel):
     current_sgpa: float | None
     previous_sgpa: float | None
     sgpa_change: float | None
+    best_semester_number: int | None
+    best_sgpa: float | None
+    lowest_semester_number: int | None
+    lowest_sgpa: float | None
     cgpa: GpaRead
     completed_credits: int
     current_semester_credits: int
