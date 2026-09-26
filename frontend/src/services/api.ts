@@ -11,6 +11,7 @@ import type {
   AttendanceOverview,
   AttendanceRecord,
   AttendanceUpdateInput,
+  CampusDocument,
   Course,
   CourseAnalytics,
   CourseAttendanceSummary,
@@ -18,6 +19,9 @@ import type {
   CourseMarkInput,
   CourseMarkUpdateInput,
   CoursePerformance,
+  DocumentCategory,
+  DocumentContent,
+  DocumentSearchResponse,
   Enrollment,
   Exam,
   ExamInput,
@@ -29,6 +33,7 @@ import type {
   InsightsResponse,
   MarksOverview,
   PerformanceTrend,
+  ProcessingStatus,
   Student,
 } from '../types/entities.ts'
 import { request } from './http.ts'
@@ -194,4 +199,48 @@ export function simulateGpa(courses: GpaSimulationCourseInput[]): Promise<GpaSim
     method: 'POST',
     body: { courses },
   })
+}
+
+export function getDocuments(params: {
+  category?: DocumentCategory
+  processing_status?: ProcessingStatus
+} = {}): Promise<CampusDocument[]> {
+  return request<CampusDocument[]>(`/api/documents${toQuery(params)}`)
+}
+
+export function getDocument(documentId: number): Promise<CampusDocument> {
+  return request<CampusDocument>(`/api/documents/${documentId}`)
+}
+
+export function getDocumentContent(documentId: number): Promise<DocumentContent> {
+  return request<DocumentContent>(`/api/documents/${documentId}/content`)
+}
+
+export function searchDocuments(query: string): Promise<DocumentSearchResponse> {
+  return request<DocumentSearchResponse>(`/api/documents/search${toQuery({ q: query })}`)
+}
+
+export function uploadDocument(input: {
+  title: string
+  category: DocumentCategory
+  description?: string
+  file: File
+}): Promise<CampusDocument> {
+  const form = new FormData()
+  form.append('title', input.title)
+  form.append('category', input.category)
+  if (input.description) {
+    form.append('description', input.description)
+  }
+  form.append('file', input.file)
+  return request<CampusDocument>('/api/documents', { method: 'POST', formData: form })
+}
+
+export function deleteDocument(documentId: number): Promise<void> {
+  return request<void>(`/api/documents/${documentId}`, { method: 'DELETE' })
+}
+
+export function documentFileUrl(documentId: number): string {
+  const base = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
+  return `${base}/api/documents/${documentId}/file`
 }

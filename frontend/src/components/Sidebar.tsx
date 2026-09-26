@@ -10,6 +10,7 @@ const links = [
   { to: '/assignments', label: 'Assignments', end: false },
   { to: '/planner', label: 'Planner', end: false },
   { to: '/analytics', label: 'Analytics', end: false },
+  { to: '/documents', label: 'Documents', end: false },
 ]
 
 export function Sidebar() {
@@ -59,7 +60,7 @@ export function Sidebar() {
           ))}
         </nav>
         <div className="border-t border-white/10 px-5 py-4 text-xs text-slate-400">
-          Phase 6 · Analytics & insights
+          Phase 7 · University knowledge
         </div>
       </aside>
     </>

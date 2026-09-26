@@ -1,8 +1,11 @@
+export type UserRole = 'STUDENT' | 'ADMIN'
+
 export type Student = {
   id: number
   full_name: string
   email: string
   university_id: string
+  role: UserRole
   created_at: string
   updated_at: string
 }
@@ -386,5 +389,64 @@ export type GpaSimulationResponse = {
   projected_gpa: GpaRead
   courses: GpaSimulationCourseResult[]
   message: string | null
+}
+
+export type DocumentCategory =
+  | 'ACADEMIC'
+  | 'EXAMINATION'
+  | 'ATTENDANCE'
+  | 'FEES'
+  | 'HOSTEL'
+  | 'PLACEMENT'
+  | 'GENERAL'
+  | 'OTHER'
+
+export type ProcessingStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+
+export type CampusDocument = {
+  id: number
+  title: string
+  description: string | null
+  original_filename: string
+  file_type: string
+  file_size: number
+  category: DocumentCategory
+  uploaded_by: number
+  processing_status: ProcessingStatus
+  processing_error: string | null
+  chunk_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type DocumentChunk = {
+  id: number
+  document_id: number
+  chunk_index: number
+  content: string
+  page_number: number | null
+  created_at: string
+}
+
+export type DocumentContent = {
+  document: CampusDocument
+  chunks: DocumentChunk[]
+}
+
+export type DocumentSearchHit = {
+  document_id: number
+  title: string
+  category: DocumentCategory
+  file_type: string
+  page_number: number | null
+  snippet: string
+  score: number
+  matched_in: string
+}
+
+export type DocumentSearchResponse = {
+  query: string
+  total: number
+  results: DocumentSearchHit[]
 }
 

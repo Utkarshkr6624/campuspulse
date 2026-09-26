@@ -9,6 +9,7 @@ __pycache__/
 
 # Uploaded university documents
 backend/storage/uploads/
+backend/tests/_test_storage/
 
 # Frontend
 frontend/node_modules/

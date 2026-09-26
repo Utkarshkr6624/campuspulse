@@ -15,11 +15,12 @@ type RequestOptions = {
   method?: string
   body?: unknown
   auth?: boolean
+  formData?: FormData
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers()
-  if (options.body !== undefined) {
+  if (options.body !== undefined && !options.formData) {
     headers.set('Content-Type', 'application/json')
   }
   if (options.auth !== false) {
@@ -34,7 +35,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.formData
+        ? options.formData
+        : options.body === undefined
+          ? undefined
+          : JSON.stringify(options.body),
     })
   } catch (error) {
     if (error instanceof TypeError) {

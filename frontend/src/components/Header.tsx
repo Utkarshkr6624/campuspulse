@@ -13,6 +13,7 @@ const titles: Record<string, string> = {
   '/assignments': 'Assignments',
   '/planner': 'Planner',
   '/analytics': 'Analytics',
+  '/documents': 'Documents',
   '/students': 'Students',
   '/enrollments': 'Enrollments',
 }
@@ -34,7 +35,10 @@ export function Header() {
   const { openSidebar } = useShell()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const title = titles[pathname] ?? 'Page not found'
+  const title =
+    pathname.startsWith('/documents/') && pathname !== '/documents'
+      ? 'Document'
+      : (titles[pathname] ?? 'Page not found')
   const now = new Date()
   const greeting = greetingForHour(now.getHours())
   const dateLabel = now.toLocaleDateString(undefined, {

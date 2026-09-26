@@ -2,25 +2,9 @@ import io
 from pathlib import Path
 
 from docx import Document as DocxDocument
-from sqlalchemy import select
 
-from app.core.roles import UserRole
-from app.db import session as db_session
-from app.models.student import Student
-from app.services import document_chunker, document_extractor
-from app.services.document_extractor import ExtractionResult, ExtractedPage
-from app.storage import get_storage
-
-
-def _promote_admin(student_id: int) -> None:
-    db = db_session.SessionLocal()
-    try:
-        student = db.get(Student, student_id)
-        assert student is not None
-        student.role = UserRole.ADMIN.value
-        db.commit()
-    finally:
-        db.close()
+from app.services import document_chunker
+from app.services.document_extractor import ExtractedPage, ExtractionResult, extract_document
 
 
 def _txt_bytes(text: str = "Students must maintain the minimum required attendance of 75%.") -> bytes:
@@ -36,22 +20,7 @@ def _docx_bytes(text: str = "Examination guidelines require valid ID cards.") ->
 
 
 def _pdf_bytes(text: str = "Hostel rules apply to all residents.") -> bytes:
-    # Minimal PDF with a text operator that pypdf can extract.
     content = f"BT /F1 12 Tf 50 100 Td ({text}) Tj ET"
-    objects = [
-        "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n",
-        "2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n",
-        (
-            "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] "
-            "/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n"
-        ),
-        f"4 0 obj<< /Length {len(content)} >>stream\n{content}\nendstream\nendobj\n",
-        "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n",
-    ]
-    body = "".join(objects)
-    header = "%PDF-1.4\n"
-    xref_offset = len(header.encode("latin-1")) + len(body.encode("latin-1"))
-    # Build with explicit offsets roughly; pypdf is tolerant of simple PDFs.
     pdf = (
         "%PDF-1.4\n"
         "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n"
@@ -75,35 +44,23 @@ def _upload(client, headers, *, filename, data, title="Policy", category="ATTEND
     )
 
 
-def test_student_cannot_upload_or_delete(client, auth_headers, monkeypatch, tmp_path):
-    from app.core import config
-
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
-    get_storage.cache_clear()
-
-    headers, student = auth_headers("doc1")
+def test_student_cannot_upload_or_delete(client, auth_headers, admin_headers):
+    headers, _ = auth_headers("doc1")
     response = _upload(client, headers, filename="policy.txt", data=_txt_bytes())
     assert response.status_code == 403
 
-    # Promote and upload, then ensure another student cannot delete.
-    _promote_admin(student["id"])
-    created = _upload(client, headers, filename="policy.txt", data=_txt_bytes())
+    admin, _ = admin_headers("doc1a")
+    created = _upload(client, admin, filename="policy.txt", data=_txt_bytes())
     assert created.status_code == 201, created.text
     doc_id = created.json()["id"]
 
-    other_headers, _ = auth_headers("doc2")
-    denied = client.delete(f"/api/documents/{doc_id}", headers=other_headers)
+    denied = client.delete(f"/api/documents/{doc_id}", headers=headers)
     assert denied.status_code == 403
 
 
-def test_admin_upload_txt_search_and_delete(client, auth_headers, monkeypatch, tmp_path):
-    from app.core import config
-
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
-    get_storage.cache_clear()
-
-    headers, student = auth_headers("doc3")
-    _promote_admin(student["id"])
+def test_admin_upload_txt_search_and_delete(client, admin_headers, auth_headers):
+    headers, student = admin_headers("doc3")
+    assert student["role"] == "ADMIN"
 
     created = _upload(
         client,
@@ -118,7 +75,6 @@ def test_admin_upload_txt_search_and_delete(client, auth_headers, monkeypatch, t
     assert body["processing_status"] == "COMPLETED"
     assert body["file_type"] == "TXT"
     assert body["chunk_count"] >= 1
-    assert "role" in client.get("/api/auth/me", headers=headers).json() or True
 
     listed = client.get("/api/documents", headers=headers)
     assert listed.status_code == 200
@@ -140,14 +96,8 @@ def test_admin_upload_txt_search_and_delete(client, auth_headers, monkeypatch, t
     assert client.get(f"/api/documents/{body['id']}", headers=headers).status_code == 404
 
 
-def test_pdf_and_docx_extraction(client, auth_headers, monkeypatch, tmp_path):
-    from app.core import config
-
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
-    get_storage.cache_clear()
-
-    headers, student = auth_headers("doc4")
-    _promote_admin(student["id"])
+def test_pdf_and_docx_extraction(client, admin_headers):
+    headers, _ = admin_headers("doc4")
 
     pdf = _upload(
         client,
@@ -157,7 +107,6 @@ def test_pdf_and_docx_extraction(client, auth_headers, monkeypatch, tmp_path):
         title="Hostel Handbook",
         category="HOSTEL",
     )
-    # PDF extraction may succeed or fail depending on parser; if FAILED, still must not crash.
     assert pdf.status_code == 201, pdf.text
     assert pdf.json()["processing_status"] in {"COMPLETED", "FAILED"}
 
@@ -178,15 +127,11 @@ def test_pdf_and_docx_extraction(client, auth_headers, monkeypatch, tmp_path):
     assert "Examination Guidelines" in titles
 
 
-def test_invalid_and_oversized_uploads(client, auth_headers, monkeypatch, tmp_path):
+def test_invalid_and_oversized_uploads(client, admin_headers, monkeypatch):
     from app.core import config
 
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
     monkeypatch.setattr(config.settings, "document_max_upload_bytes", 128)
-    get_storage.cache_clear()
-
-    headers, student = auth_headers("doc5")
-    _promote_admin(student["id"])
+    headers, _ = admin_headers("doc5")
 
     exe = _upload(client, headers, filename="malware.exe", data=b"MZ")
     assert exe.status_code == 400
@@ -195,15 +140,8 @@ def test_invalid_and_oversized_uploads(client, auth_headers, monkeypatch, tmp_pa
     assert oversized.status_code == 400
 
 
-def test_failed_processing_empty_text(client, auth_headers, monkeypatch, tmp_path):
-    from app.core import config
-
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
-    get_storage.cache_clear()
-
-    headers, student = auth_headers("doc6")
-    _promote_admin(student["id"])
-
+def test_failed_processing_empty_text(client, admin_headers):
+    headers, _ = admin_headers("doc6")
     response = _upload(client, headers, filename="empty.txt", data=b"   \n\t  ")
     assert response.status_code == 201
     body = response.json()
@@ -211,7 +149,7 @@ def test_failed_processing_empty_text(client, auth_headers, monkeypatch, tmp_pat
     assert body["processing_error"]
 
 
-def test_chunking_and_extractor_unit():
+def test_chunking_and_txt_extractor(tmp_path):
     extraction = ExtractionResult(
         pages=[
             ExtractedPage(page_number=1, text="A" * 50 + " attendance requirement " + "B" * 50),
@@ -222,8 +160,10 @@ def test_chunking_and_extractor_unit():
     assert len(chunks) >= 2
     assert chunks[0].page_number == 1
 
-    path = Path(__file__).resolve()
-    # TXT extraction via temporary content tested through API above.
+    path = tmp_path / "sample.txt"
+    path.write_text("Students must maintain the minimum required attendance.", encoding="utf-8")
+    result = extract_document(path, "TXT")
+    assert "attendance" in result.full_text.lower()
 
 
 def test_search_requires_auth(client):
@@ -231,17 +171,11 @@ def test_search_requires_auth(client):
     assert client.get("/api/documents").status_code == 401
 
 
-def test_student_can_search_admin_documents(client, auth_headers, monkeypatch, tmp_path):
-    from app.core import config
-
-    monkeypatch.setattr(config.settings, "document_storage_path", str(tmp_path / "uploads"))
-    get_storage.cache_clear()
-
-    admin_headers, admin = auth_headers("doc7")
-    _promote_admin(admin["id"])
+def test_student_can_search_admin_documents(client, admin_headers, auth_headers):
+    admin, _ = admin_headers("doc7")
     created = _upload(
         client,
-        admin_headers,
+        admin,
         filename="fees.txt",
         data=_txt_bytes("Tuition fee payment deadlines are published each semester."),
         title="Fee Circular",
