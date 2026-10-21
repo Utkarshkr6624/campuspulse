@@ -82,7 +82,7 @@ def ensure_identity_available(
         raise ConflictError("An account with this email already exists. Please log in instead.")
     id_owner = db.scalar(select(Student).where(Student.university_id == university_id))
     if id_owner is not None and id_owner.id != student_id:
-        raise ConflictError("An account with these details already exists.")
+        raise ConflictError("An account with this university ID already exists.")
 
 
 def _normalize_email(email: str) -> str:
